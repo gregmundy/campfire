@@ -31,14 +31,86 @@ h1 {
 #connection-status {
     margin-bottom: 1rem;
     font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    background: rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(4px);
+    width: fit-content;
+    margin: 0 auto 1rem;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#connection-status::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    transition: all 0.3s ease;
 }
 
 #connection-status.connected {
     color: #48bb78;
+    border-color: rgba(72, 187, 120, 0.3);
+    box-shadow: 0 0 20px rgba(72, 187, 120, 0.1);
+}
+
+#connection-status.connected::before {
+    background: #48bb78;
+    box-shadow: 
+        0 0 0 2px rgba(72, 187, 120, 0.2),
+        0 0 8px rgba(72, 187, 120, 0.4),
+        0 0 15px rgba(72, 187, 120, 0.1);
+    animation: pulse 2s ease-in-out infinite;
 }
 
 #connection-status.disconnected {
     color: #e53e3e;
+    border-color: rgba(229, 62, 62, 0.3);
+    box-shadow: 0 0 20px rgba(229, 62, 62, 0.1);
+}
+
+#connection-status.disconnected::before {
+    background: #e53e3e;
+    box-shadow: 
+        0 0 0 2px rgba(229, 62, 62, 0.2),
+        0 0 8px rgba(229, 62, 62, 0.4),
+        0 0 15px rgba(229, 62, 62, 0.1);
+    animation: pulse-error 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.1);
+        opacity: 0.8;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes pulse-error {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.1);
+        opacity: 0.8;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
 }
 
 #room-info {
@@ -1120,37 +1192,99 @@ button:disabled {
 
 #room-code.compact {
     position: fixed;
-    top: 10px;
-    right: 10px;
-    background: rgba(0, 0, 0, 0.7);
-    padding: 8px 12px;
-    border-radius: 20px;
-    font-size: 14px;
+    top: 15px;
+    right: 15px;
+    background: rgba(45, 55, 72, 0.4);
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
     display: flex;
     align-items: center;
     gap: 8px;
     z-index: 1000;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    box-shadow: 
+        0 2px 4px rgba(0, 0, 0, 0.1),
+        0 0 15px rgba(0, 0, 0, 0.05),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.1),
+        inset 0 0 30px rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(8px);
+    transition: all 0.3s ease;
+    transform-origin: right;
+    min-width: 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#room-code.compact:hover {
+    background: rgba(45, 55, 72, 0.5);
+    box-shadow: 
+        0 3px 8px rgba(0, 0, 0, 0.15),
+        0 0 20px rgba(0, 0, 0, 0.1),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.15),
+        inset 0 0 30px rgba(255, 255, 255, 0.05);
 }
 
 #room-code.compact #room-code-text {
-    color: white;
+    color: rgba(255, 255, 255, 0.95);
     margin: 0;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 11px;
+    letter-spacing: 0.3px;
+    font-weight: 500;
+    white-space: nowrap;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+#room-code.compact #room-code-text::before {
+    content: '●';
+    color: #48bb78;
+    margin-right: 6px;
+    font-size: 8px;
+    animation: pulse 2s ease-in-out infinite;
+    display: inline-block;
+    vertical-align: middle;
+    text-shadow: 0 0 6px rgba(72, 187, 120, 0.6);
+    opacity: 0.9;
 }
 
 #room-code.compact #copy-link {
     padding: 4px 8px;
-    font-size: 12px;
-    background: rgba(255, 255, 255, 0.2);
-    border: none;
-    color: white;
-    border-radius: 12px;
+    font-size: 11px;
+    background: rgba(72, 187, 120, 0.15);
+    border: 1px solid rgba(72, 187, 120, 0.2);
+    color: rgba(255, 255, 255, 0.95);
+    border-radius: 4px;
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: all 0.2s ease;
+    font-weight: 500;
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    backdrop-filter: blur(4px);
+    min-width: 80px;
+}
+
+#room-code.compact #copy-link::before {
+    content: '📋';
+    font-size: 10px;
+    margin-right: 2px;
 }
 
 #room-code.compact #copy-link:hover {
-    background: rgba(255, 255, 255, 0.3);
+    background: rgba(72, 187, 120, 0.25);
+    border-color: rgba(72, 187, 120, 0.4);
+    transform: translateY(-1px);
+    box-shadow: 
+        0 2px 6px rgba(72, 187, 120, 0.15),
+        0 0 0 1px rgba(72, 187, 120, 0.2),
+        inset 0 0 20px rgba(72, 187, 120, 0.1);
+}
+
+#room-code.compact #copy-link:active {
+    transform: translateY(0);
+    background: rgba(72, 187, 120, 0.3);
 }
 
 .name-container {
@@ -1210,4 +1344,293 @@ button:disabled {
 
 #generate-room:hover {
     background-color: #38a169;
+}
+
+.deck-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin: 1rem auto;
+    padding: 1rem;
+    background: rgba(45, 55, 72, 0.9);
+    border-radius: 8px;
+    max-width: 800px;
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.deck-selector {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.deck-selector label {
+    color: #fff;
+    font-size: 0.9rem;
+    min-width: 80px;
+}
+
+.deck-type-select {
+    flex: 1;
+    padding: 0.5rem;
+    background: rgba(30, 41, 59, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    color: #fff;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.deck-type-select:hover {
+    border-color: rgba(72, 187, 120, 0.5);
+    box-shadow: 0 0 10px rgba(72, 187, 120, 0.2);
+}
+
+.deck-type-select:focus {
+    outline: none;
+    border-color: rgba(72, 187, 120, 0.8);
+    box-shadow: 0 0 15px rgba(72, 187, 120, 0.3);
+}
+
+.custom-deck-input {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.custom-deck-input.hidden {
+    display: none;
+}
+
+.custom-deck-input label {
+    color: #fff;
+    font-size: 0.9rem;
+}
+
+.custom-cards-section {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.custom-cards-section input {
+    flex: 1;
+    padding: 0.5rem;
+    background: rgba(30, 41, 59, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    color: #fff;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.custom-cards-section input:focus {
+    outline: none;
+    border-color: rgba(72, 187, 120, 0.8);
+    box-shadow: 0 0 15px rgba(72, 187, 120, 0.3);
+}
+
+.update-cards-button {
+    padding: 0.5rem 1rem;
+    background: rgba(72, 187, 120, 0.2);
+    border: 1px solid rgba(72, 187, 120, 0.5);
+    border-radius: 4px;
+    color: #fff;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.update-cards-button:hover {
+    background: rgba(72, 187, 120, 0.3);
+    border-color: rgba(72, 187, 120, 0.8);
+    box-shadow: 0 0 10px rgba(72, 187, 120, 0.2);
+}
+
+.settings-button {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(45, 55, 72, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #fff;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    z-index: 1000;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(4px);
+}
+
+.settings-button:hover {
+    background: rgba(45, 55, 72, 1);
+    transform: rotate(45deg);
+    border-color: rgba(255, 255, 255, 0.4);
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+}
+
+.settings-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    visibility: visible;
+}
+
+.settings-modal::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    opacity: 0;
+    backdrop-filter: blur(0px);
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.settings-modal:not(.hidden)::before {
+    opacity: 1;
+    backdrop-filter: blur(4px);
+}
+
+.settings-modal.hidden {
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.settings-modal.hidden::before {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+}
+
+.settings-content {
+    background: rgba(45, 55, 72, 0.95);
+    padding: 2rem;
+    border-radius: 12px;
+    position: relative;
+    width: 90%;
+    max-width: 600px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 
+        0 0 0 1px rgba(255, 255, 255, 0.1),
+        0 0 30px rgba(0, 0, 0, 0.1),
+        0 0 50px rgba(0, 0, 0, 0.2);
+    transform: scale(0.95) translateY(20px);
+    opacity: 0;
+    transition: 
+        transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
+        opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+        box-shadow 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.settings-modal:not(.hidden) .settings-content {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+    box-shadow: 
+        0 0 0 1px rgba(255, 255, 255, 0.15),
+        0 0 30px rgba(0, 0, 0, 0.2),
+        0 0 50px rgba(0, 0, 0, 0.4);
+}
+
+.settings-content h2 {
+    color: #fff;
+    margin-bottom: 1.5rem;
+    font-size: 1.5rem;
+    text-align: center;
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: 
+        opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.2s,
+        transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s;
+}
+
+.settings-modal:not(.hidden) .settings-content h2 {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.deck-controls {
+    opacity: 0;
+    transform: translateY(10px);
+    transition: 
+        opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.3s,
+        transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s;
+}
+
+.settings-modal:not(.hidden) .deck-controls {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.settings-content .close-button {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    opacity: 0;
+    transform: scale(0.8) rotate(-90deg);
+    transition: 
+        all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
+        background-color 0.3s ease;
+}
+
+.settings-modal:not(.hidden) .close-button {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+    transition-delay: 0.4s;
+}
+
+.settings-content .close-button:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+    transform: scale(1.1) rotate(90deg);
+}
+
+.settings-modal.hidden .settings-content {
+    transform: scale(0.95) translateY(20px);
+    opacity: 0;
+    transition: 
+        transform 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+        opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+        box-shadow 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.settings-modal.hidden .settings-content h2,
+.settings-modal.hidden .deck-controls,
+.settings-modal.hidden .close-button {
+    opacity: 0;
+    transform: translateY(10px);
+    transition: 
+        opacity 0.3s ease,
+        transform 0.3s ease;
 } 

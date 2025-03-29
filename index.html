@@ -43,11 +43,34 @@
                     </div>
                     <div class="players-circle" id="players-list"></div>
                 </div>
-                <div class="story-section">
-                    <div class="custom-cards-section">
-                        <input type="text" id="custom-cards" placeholder="Enter custom card values (comma-separated, e.g. 1,2,3,5,8,13,21,?,∞)" value="1,2,3,5,8,13,21,?,∞">
-                        <button id="update-cards">Update Cards</button>
+                <button id="settings-button" class="settings-button">⚙️</button>
+                <div id="settings-modal" class="settings-modal hidden">
+                    <div class="settings-content">
+                        <button class="close-button">×</button>
+                        <h2>Card Deck Settings</h2>
+                        <div class="deck-controls">
+                            <div class="deck-selector">
+                                <label for="deck-type">Card Deck:</label>
+                                <select id="deck-type" class="deck-type-select">
+                                    <option value="fibonacci">Fibonacci (1, 2, 3, 5, 8, 13, 21, ?)</option>
+                                    <option value="modified-fibonacci">Modified Fibonacci (0, ½, 1, 2, 3, 5, 8, 13, 20, 40, 100, ?)</option>
+                                    <option value="t-shirt">T-Shirt (XXS, XS, S, M, L, XL, XXL, ?)</option>
+                                    <option value="powers">Powers of 2 (1, 2, 4, 8, 16, 32, 64, ?)</option>
+                                    <option value="custom">Custom...</option>
+                                </select>
+                            </div>
+                            
+                            <div id="custom-deck-input" class="custom-deck-input hidden">
+                                <label for="custom-cards">Custom Cards (comma-separated):</label>
+                                <div class="custom-cards-section">
+                                    <input type="text" id="custom-cards" placeholder="1, 2, 3, 5, 8, 13, 21, ?" />
+                                    <button id="update-cards" class="update-cards-button">Update Cards</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
+                </div>
+                <div class="story-section">
                     <div class="cards-section">
                         <div class="card" data-value="1">1</div>
                         <div class="card" data-value="2">2</div>

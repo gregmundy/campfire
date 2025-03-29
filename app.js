@@ -9,6 +9,12 @@ class PlanningPoker {
         this.currentCardSet = [];
         this.previousPlayers = new Set(); // Track previous players for join notifications
         this.isFirstState = true; // Track if this is the first state update
+        this.presetDecks = {
+            fibonacci: ['1', '2', '3', '5', '8', '13', '21', '?'],
+            'modified-fibonacci': ['0', '½', '1', '2', '3', '5', '8', '13', '20', '40', '100', '?'],
+            't-shirt': ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '?'],
+            powers: ['1', '2', '4', '8', '16', '32', '64', '?']
+        };
         this.init();
     }
 
@@ -33,10 +39,75 @@ class PlanningPoker {
         this.campfireContainer = document.querySelector('.campfire-container');
         this.customCardsInput = document.getElementById('custom-cards');
         this.updateCardsButton = document.getElementById('update-cards');
+        this.deckTypeSelect = document.getElementById('deck-type');
+        this.customDeckInput = document.getElementById('custom-deck-input');
+        this.settingsButton = document.getElementById('settings-button');
+        this.settingsModal = document.getElementById('settings-modal');
+
+        // Add settings button event listeners
+        if (this.settingsButton && this.settingsModal) {
+            this.settingsButton.addEventListener('click', () => {
+                this.settingsModal.classList.remove('hidden');
+                // Force a reflow to ensure the animation starts
+                this.settingsModal.offsetHeight;
+            });
+
+            // Close modal when clicking outside
+            this.settingsModal.addEventListener('click', (e) => {
+                if (e.target === this.settingsModal) {
+                    this.closeSettingsModal();
+                }
+            });
+
+            const closeButton = this.settingsModal.querySelector('.close-button');
+            if (closeButton) {
+                closeButton.addEventListener('click', () => {
+                    this.closeSettingsModal();
+                });
+            }
+
+            // Handle escape key
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && !this.settingsModal.classList.contains('hidden')) {
+                    this.closeSettingsModal();
+                }
+            });
+        }
+
+        // Add form submission handling
+        const handleJoinSubmit = (e) => {
+            e?.preventDefault();
+            this.joinGame();
+        };
 
         // Event listeners
         if (this.joinButton) {
-            this.joinButton.addEventListener('click', () => this.joinGame());
+            this.joinButton.addEventListener('click', handleJoinSubmit);
+        }
+
+        // Add keypress handlers for username and channel inputs
+        if (this.usernameInput) {
+            this.usernameInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    if (this.channelInput.value) {
+                        handleJoinSubmit(e);
+                    } else {
+                        this.channelInput.focus();
+                    }
+                }
+            });
+        }
+
+        if (this.channelInput) {
+            this.channelInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    if (this.usernameInput.value) {
+                        handleJoinSubmit(e);
+                    } else {
+                        this.usernameInput.focus();
+                    }
+                }
+            });
         }
 
         if (this.generateRoomButton) {
@@ -56,6 +127,11 @@ class PlanningPoker {
         
         if (this.copyLinkButton) {
             this.copyLinkButton.addEventListener('click', () => this.copyRoomLink());
+        }
+        
+        // Add deck type change handler
+        if (this.deckTypeSelect) {
+            this.deckTypeSelect.addEventListener('change', () => this.handleDeckTypeChange());
         }
         
         // Custom cards event listeners
@@ -109,8 +185,11 @@ class PlanningPoker {
         navigator.clipboard.writeText(cleanUrl).then(() => {
             const originalText = this.copyLinkButton.textContent;
             this.copyLinkButton.textContent = 'Copied!';
+            this.copyLinkButton.style.background = 'rgba(72, 187, 120, 0.4)';
+            
             setTimeout(() => {
-                this.copyLinkButton.textContent = originalText;
+                this.copyLinkButton.textContent = 'Copy';
+                this.copyLinkButton.style.background = '';
             }, 2000);
         }).catch(() => {
             this.showErrorNotification('Failed to copy link. Please try again.');
@@ -133,7 +212,7 @@ class PlanningPoker {
         this.ws = new WebSocket(wsUrl);
 
         this.ws.onopen = () => {
-            this.connectionStatus.textContent = 'Connected';
+            this.connectionStatus.innerHTML = '<span>Connected</span>';
             this.connectionStatus.className = 'connected';
             
             // If we have pending join info, send it now
@@ -153,7 +232,7 @@ class PlanningPoker {
         };
 
         this.ws.onclose = () => {
-            this.connectionStatus.textContent = 'Disconnected';
+            this.connectionStatus.innerHTML = '<span>Disconnected</span>';
             this.connectionStatus.className = 'disconnected';
             
             // Try to reconnect after 2 seconds
@@ -337,7 +416,7 @@ class PlanningPoker {
             .filter(v => v.length > 0);
 
         if (values.length === 0) {
-            alert('Please enter at least one card value');
+            this.showErrorNotification('Please enter at least one card value');
             return;
         }
 
@@ -971,9 +1050,15 @@ class PlanningPoker {
     updateRoomCode(roomCode) {
         if (roomCode) {
             this.roomCode = roomCode.toUpperCase();
-            this.roomCodeText.textContent = `Room: ${this.roomCode}`;
+            this.roomCodeText.textContent = this.roomCode;
             this.roomCodeDiv.classList.remove('hidden');
             this.roomCodeDiv.classList.add('compact');
+            
+            // Update copy button text
+            if (this.copyLinkButton) {
+                this.copyLinkButton.textContent = 'Copy';
+            }
+            
             // Update URL with room code
             const url = new URL(window.location.href);
             url.searchParams.set('room', this.roomCode);
@@ -1039,6 +1124,38 @@ class PlanningPoker {
         } else {
             this.showErrorNotification('Not connected to server');
         }
+    }
+
+    handleDeckTypeChange() {
+        const selectedDeck = this.deckTypeSelect.value;
+        
+        // Show/hide custom input based on selection
+        if (selectedDeck === 'custom') {
+            this.customDeckInput.classList.remove('hidden');
+            return;
+        }
+        
+        this.customDeckInput.classList.add('hidden');
+        
+        // Update cards with preset deck
+        const cards = this.presetDecks[selectedDeck];
+        if (cards) {
+            this.currentCardSet = cards;
+            this.updateCardSetUI(cards);
+            
+            // Send the new card set to the server
+            if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                this.ws.send(JSON.stringify({
+                    type: 'updateCardSet',
+                    cards: cards
+                }));
+            }
+        }
+    }
+
+    closeSettingsModal() {
+        // Add a class to trigger the closing animation
+        this.settingsModal.classList.add('hidden');
     }
 }
 

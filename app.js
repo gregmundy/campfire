@@ -5,7 +5,7 @@ class PlanningPoker {
         this.ws = null;
         this.roomCode = null;
         this.emojiSelector = null;
-        this.emojiOptions = ['😊', '😂', '🤣', '😍', '😎', '🤔', '😴', '🤮', '💩', '🤡', '👻', '🤖'];
+        this.emojiOptions = ['😊', '😂', '🤣', '😍', '😎', '🤔', '😴', '💩', '🤡', '👻', '🤖', '📓', '❤️'];
         this.currentCardSet = [];
         this.previousPlayers = new Set(); // Track previous players for join notifications
         this.isFirstState = true; // Track if this is the first state update
@@ -194,6 +194,7 @@ class PlanningPoker {
     handleMessage(event) {
         try {
             const message = JSON.parse(event.data);
+            console.log('Received message:', message); // Add logging
 
             switch (message.type) {
                 case 'channel_state':                    
@@ -274,6 +275,7 @@ class PlanningPoker {
                     this.showPlayerLeftNotification(message.username);
                     break;
                 case 'emojiThrown':
+                    console.log('Handling emoji throw:', message); // Add logging
                     this.handleEmojiThrown(message);
                     break;
                 case 'error':
@@ -286,6 +288,7 @@ class PlanningPoker {
                     this.showErrorNotification('Unknown message type received');
             }
         } catch (error) {
+            console.error('Error processing message:', error); // Add error logging
             this.showErrorNotification('Error processing message');
         }
     }
@@ -370,69 +373,99 @@ class PlanningPoker {
         this.updatePlayersList();
     }
 
-    handleEmojiThrown(message) {
-        const targetCard = Array.from(document.querySelectorAll('.player-card'))
-            .find(card => card.textContent.includes(message.target));
+    handleEmojiThrown(data) {
+        console.log('Handling emoji throw with data:', data);
         
-        if (targetCard) {
-            const rect = targetCard.getBoundingClientRect();
-            
-            // Find the source player's card (the one who threw the emoji)
-            const sourceCard = Array.from(document.querySelectorAll('.player-card'))
-                .find(card => {
-                    const name = card.querySelector('.player-name')?.textContent;
-                    return name === message.source;
-                });
-            
-            if (!sourceCard) {
-                return;
-            }
-            
-            const sourceRect = sourceCard.getBoundingClientRect();
-            const sourceX = sourceRect.left + (sourceRect.width / 2);
-            const sourceY = sourceRect.top + (sourceRect.height / 2);
-            const targetX = rect.left + (rect.width / 2);
-            const targetY = rect.top + (rect.height / 2);
-            
-            // Calculate the distance to travel
-            const dx = targetX - sourceX;
-            const dy = targetY - sourceY;
-
-            // Create projectile with unique ID
-            const projectileId = `projectile-${Date.now()}-${Math.random()}`;
-            const projectile = document.createElement('div');
-            projectile.className = 'emoji-projectile';
-            projectile.id = projectileId;
-            projectile.textContent = message.emoji;
-            projectile.style.setProperty('--target-x', `${dx}px`);
-            projectile.style.setProperty('--target-y', `${dy}px`);
-            projectile.style.left = `${sourceX}px`;
-            projectile.style.top = `${sourceY}px`;
-
-            document.body.appendChild(projectile);
-
-            // Remove projectile and show hit effect
-            setTimeout(() => {
-                const projectileElement = document.getElementById(projectileId);
-                if (projectileElement) projectileElement.remove();
-
-                // Create hit effect
-                const hitId = `hit-${Date.now()}-${Math.random()}`;
-                const hit = document.createElement('div');
-                hit.className = 'emoji-hit';
-                hit.id = hitId;
-                hit.textContent = message.emoji;
-                hit.style.left = `${targetX}px`;
-                hit.style.top = `${targetY}px`;
-                document.body.appendChild(hit);
-
-                // Remove hit effect after animation
-                setTimeout(() => {
-                    const hitElement = document.getElementById(hitId);
-                    if (hitElement) hitElement.remove();
-                }, 500);
-            }, 400);
+        // Find the source player's wrapper
+        const sourceWrapper = document.querySelector(`.player-wrapper[data-player-id="${data.source}"]`);
+        if (!sourceWrapper) {
+            console.log('Source wrapper not found:', data.source);
+            return;
         }
+        console.log('Found source wrapper:', sourceWrapper);
+
+        // Find the target player's wrapper using the target ID
+        const targetWrapper = document.querySelector(`.player-wrapper[data-player-id="${data.target}"]`);
+        if (!targetWrapper) {
+            console.log('Target wrapper not found:', data.target);
+            return;
+        }
+        console.log('Found target wrapper:', targetWrapper);
+
+        const targetCard = targetWrapper.querySelector('.player-card');
+        const sourceCard = sourceWrapper.querySelector('.player-card');
+        
+        if (!targetCard || !sourceCard) {
+            console.log('Cards not found');
+            return;
+        }
+        console.log('Found both cards');
+
+        const targetRect = targetCard.getBoundingClientRect();
+        const sourceRect = sourceCard.getBoundingClientRect();
+        
+        // Calculate center points of both cards
+        const targetX = targetRect.left + targetRect.width / 2;
+        const targetY = targetRect.top + targetRect.height / 2;
+        const sourceX = sourceRect.left + sourceRect.width / 2;
+        const sourceY = sourceRect.top + sourceRect.height / 2;
+
+        console.log('Calculated positions:', {
+            source: { x: sourceX, y: sourceY },
+            target: { x: targetX, y: targetY }
+        });
+
+        // Create projectile
+        const projectile = document.createElement('div');
+        projectile.className = 'emoji-projectile';
+        projectile.textContent = data.emoji;
+        projectile.style.left = `${sourceX}px`;
+        projectile.style.top = `${sourceY}px`;
+        document.body.appendChild(projectile);
+        console.log('Created projectile');
+
+        // Calculate the angle between source and target
+        const angle = Math.atan2(targetY - sourceY, targetX - sourceX);
+        
+        // Calculate the distance to target
+        const distance = Math.sqrt(Math.pow(targetX - sourceX, 2) + Math.pow(targetY - sourceY, 2));
+        
+        // Calculate bounce offset based on angle
+        const bounceDistance = 50; // pixels to bounce
+        const bounceX = Math.cos(angle) * bounceDistance;
+        const bounceY = Math.sin(angle) * bounceDistance;
+
+        // Set CSS variables for animation
+        projectile.style.setProperty('--target-x', `${targetX - sourceX}px`);
+        projectile.style.setProperty('--target-y', `${targetY - sourceY}px`);
+        projectile.style.setProperty('--bounce-x', `${bounceX}px`);
+        projectile.style.setProperty('--bounce-y', `${bounceY}px`);
+
+        console.log('Set animation variables:', {
+            targetX: targetX - sourceX,
+            targetY: targetY - sourceY,
+            bounceX,
+            bounceY
+        });
+
+        // Create hit effect
+        const hitEffect = document.createElement('div');
+        hitEffect.className = 'emoji-hit';
+        hitEffect.textContent = data.emoji;
+        hitEffect.style.left = `${targetX}px`;
+        hitEffect.style.top = `${targetY}px`;
+        document.body.appendChild(hitEffect);
+        console.log('Created hit effect');
+
+        // Add hit animation to target card
+        targetCard.classList.add('hit');
+
+        // Remove elements after animation
+        setTimeout(() => {
+            projectile.remove();
+            hitEffect.remove();
+            targetCard.classList.remove('hit');
+        }, 1000);
     }
 
     selectCard(card) {
@@ -521,83 +554,85 @@ class PlanningPoker {
     }
 
     updatePlayersList(players) {
-        if (!this.playersList) return;
-        
         // Convert players object to Map for easier access
         this.players = new Map(Object.entries(players));
         
-        // Clear existing player cards
-        while (this.playersList.firstChild) {
-            this.playersList.removeChild(this.playersList.firstChild);
-        }
-        
-        const numPlayers = this.players.size;
-        const radius = 200; // Distance from center
-        let index = 0;
-        
-        this.players.forEach((player, name) => {
+        const playersList = document.querySelector('.players-circle');
+        if (!playersList) return;
+
+        // Clear existing players
+        playersList.innerHTML = '';
+
+        // Calculate positions for each player
+        const playerCount = this.players.size;
+        const radius = 250; // Increased radius for better spacing
+        const centerX = 300; // Half of campfire-container width
+        const centerY = 300; // Half of campfire-container height
+
+        // Sort players to ensure consistent positioning
+        const sortedPlayers = Array.from(this.players.entries())
+            .sort(([idA], [idB]) => idA.localeCompare(idB));
+
+        sortedPlayers.forEach(([id, player], index) => {
+            const angle = (index * 2 * Math.PI) / playerCount;
+            const x = centerX + radius * Math.cos(angle);
+            const y = centerY + radius * Math.sin(angle);
+
+            const playerWrapper = document.createElement('div');
+            playerWrapper.className = 'player-wrapper';
+            playerWrapper.style.left = `${x}px`;
+            playerWrapper.style.top = `${y}px`;
+            playerWrapper.dataset.playerId = id; // Set the player ID
+
+            // Add click handler for emoji selector
+            if (!player.isCurrentUser) {
+                playerWrapper.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.showEmojiSelector(e, { name: player.name, id: id });
+                });
+                playerWrapper.style.cursor = 'pointer';
+            }
+
             const playerCard = document.createElement('div');
             playerCard.className = 'player-card';
-            
-            // Add class for current user
             if (player.isCurrentUser) {
                 playerCard.classList.add('current-user');
-                playerCard.style.cursor = 'default'; // Ensure cursor is default for current user
-            } else {
-                // Add click handler for emoji shooter for other players only
-                playerCard.addEventListener('click', (e) => {
-                    // Double check that this is not the current user's card
-                    if (!playerCard.classList.contains('current-user')) {
-                        this.showEmojiSelector(e, { name });
-                    }
-                });
-                playerCard.style.cursor = 'pointer';
+                playerWrapper.style.cursor = 'default';
             }
-            
-            // Calculate position in circle
-            const angle = (index * (360 / numPlayers) - 90) * (Math.PI / 180);
-            const x = radius * Math.cos(angle);
-            const y = radius * Math.sin(angle);
-            
-            playerCard.style.transform = `translate(${x}px, ${y}px)`;
-            
-            // Create name container for better styling
+
+            const voteIndicator = document.createElement('div');
+            voteIndicator.className = 'vote-indicator';
+            if (player.vote !== null && player.vote !== undefined) {
+                voteIndicator.classList.add('has-voted');
+                if (this.revealed) {
+                    voteIndicator.classList.add('revealed');
+                    voteIndicator.textContent = player.vote;
+                } else {
+                    voteIndicator.textContent = '✓';
+                }
+            }
+
             const nameContainer = document.createElement('div');
             nameContainer.className = 'name-container';
-            
-            // Add name and (You) indicator if it's the current user
-            const nameSpan = document.createElement('span');
-            nameSpan.className = 'player-name';
-            nameSpan.textContent = name;
-            nameContainer.appendChild(nameSpan);
-            
+
+            const playerName = document.createElement('span');
+            playerName.className = 'player-name';
+            playerName.textContent = player.name;
+
+            const youIndicator = document.createElement('span');
+            youIndicator.className = 'you-indicator';
+            youIndicator.textContent = '(you)';
+
+            nameContainer.appendChild(playerName);
             if (player.isCurrentUser) {
-                const youIndicator = document.createElement('span');
-                youIndicator.className = 'you-indicator';
-                youIndicator.textContent = ' (You)';
                 nameContainer.appendChild(youIndicator);
             }
-            
-            const voteSpan = document.createElement('span');
-            voteSpan.className = 'vote-indicator';
-            
-            // Show vote based on state
-            if (player.vote !== null && player.vote !== undefined) {
-                if (this.revealed) {
-                    voteSpan.textContent = player.vote;
-                    voteSpan.classList.add('revealed');
-                } else {
-                    voteSpan.textContent = '✓';
-                    voteSpan.classList.add('has-voted');
-                }
-            } else {
-                voteSpan.textContent = '...';
-            }
-            
-            playerCard.appendChild(nameContainer);
-            playerCard.appendChild(voteSpan);
-            this.playersList.appendChild(playerCard);
-            index++;
+
+            playerCard.appendChild(voteIndicator);
+            playerWrapper.appendChild(playerCard);
+            playerWrapper.appendChild(nameContainer);
+            playersList.appendChild(playerWrapper);
         });
     }
 
@@ -761,25 +796,37 @@ class PlanningPoker {
             .join('');
     }
 
-    handleGlobalClick(e) {
-        // Close emoji selector if clicking outside both the selector and any player card
-        if (this.emojiSelector && 
-            !this.emojiSelector.contains(e.target) && 
-            !e.target.closest('.player-card')) {
-            this.emojiSelector.remove();
-            this.emojiSelector = null;
+    handleGlobalClick(event) {
+        // Check if click is on emoji selector or its children
+        const selector = document.querySelector('.emoji-selector');
+        const playerWrapper = event.target.closest('.player-wrapper');
+        const emojiOption = event.target.closest('.emoji-option');
+        
+        // If click is on emoji selector or its children, do nothing
+        if (selector && (selector.contains(event.target) || emojiOption)) {
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+        }
+        
+        // If click is on a player wrapper, show emoji selector
+        if (playerWrapper && !playerWrapper.classList.contains('current-user')) {
+            const playerName = playerWrapper.querySelector('.player-name')?.textContent;
+            const playerId = playerWrapper.dataset.playerId;
+            if (playerName && playerId) {
+                this.showEmojiSelector(event, { name: playerName, id: playerId });
+            }
+            return;
+        }
+        
+        // If click is outside both selector and player wrapper, close selector
+        if (selector) {
+            selector.remove();
         }
     }
 
     showEmojiSelector(e, targetPlayer) {
-        // Prevent throwing emojis at yourself
-        const currentPlayerCard = Array.from(document.querySelectorAll('.player-card'))
-            .find(card => card.textContent.includes('(You)'));
-            
-        if (currentPlayerCard && e.currentTarget === currentPlayerCard) {
-            return;
-        }
-
+        e.preventDefault();
         e.stopPropagation();
         
         // If selector exists and is for the same target, keep it open
@@ -796,103 +843,69 @@ class PlanningPoker {
         this.emojiSelector = document.createElement('div');
         this.emojiSelector.className = 'emoji-selector';
         this.emojiSelector.dataset.targetPlayer = targetPlayer.name;
+        this.emojiSelector.dataset.targetId = targetPlayer.id;
         
         // Add grid container for emojis
         const gridContainer = document.createElement('div');
         gridContainer.className = 'emoji-grid';
-        this.emojiSelector.appendChild(gridContainer);
         
-        // Get the clicked card's position (target position)
-        const targetCard = e.currentTarget;
-        const targetRect = targetCard.getBoundingClientRect();
-        
-        // Get the current user's card position (source position)
-        const sourceRect = currentPlayerCard.getBoundingClientRect();
-        
-        // Calculate center points
-        const targetX = targetRect.left + targetRect.width / 2;
-        const targetY = targetRect.top + targetRect.height / 2;
-        const sourceX = sourceRect.left + sourceRect.width / 2;
-        const sourceY = sourceRect.top + sourceRect.height / 2;
-        
-        // Calculate vector from source to target
-        const vectorX = targetX - sourceX;
-        const vectorY = targetY - sourceY;
-        
-        // Calculate the total distance and normalized direction
-        const totalDistance = Math.sqrt(vectorX * vectorX + vectorY * vectorY);
-        const dirX = vectorX / totalDistance;
-        const dirY = vectorY / totalDistance;
-        
-        // Calculate the edge point of the card in the direction of the vector
-        const halfWidth = targetRect.width / 2;
-        const halfHeight = targetRect.height / 2;
-        
-        // Calculate intersection point with card edge
-        let edgeX, edgeY;
-        const absDirectionX = Math.abs(dirX);
-        const absDirectionY = Math.abs(dirY);
-        
-        if (absDirectionX * halfHeight <= absDirectionY * halfWidth) {
-            // Intersects with top/bottom edge
-            edgeY = targetY + (dirY > 0 ? halfHeight : -halfHeight);
-            edgeX = targetX + dirX * (halfHeight / absDirectionY);
-        } else {
-            // Intersects with left/right edge
-            edgeX = targetX + (dirX > 0 ? halfWidth : -halfWidth);
-            edgeY = targetY + dirY * (halfWidth / absDirectionX);
-        }
-        
-        // Position the selector 5px from the edge point
-        const selectorDistance = 5;
-        const selectorX = edgeX + (dirX * selectorDistance);
-        const selectorY = edgeY + (dirY * selectorDistance);
-        
-        // Position the selector, accounting for its new size (4 columns)
-        const selectorWidth = 160;  // 4 emojis * 40px width
-        const selectorHeight = 80; // 3 rows * 40px height (for 12 emojis)
-        
-        let left = selectorX - selectorWidth / 2;
-        let top = selectorY - selectorHeight / 2;
-        
-        // Ensure the selector stays within viewport bounds
-        left = Math.max(10, Math.min(window.innerWidth - selectorWidth - 10, left));
-        top = Math.max(10, Math.min(window.innerHeight - selectorHeight - 10, top));
-        
-        this.emojiSelector.style.left = `${left}px`;
-        this.emojiSelector.style.top = `${top}px`;
-
-        // Add emoji options to the grid
+        // Add emoji options using the original set
         this.emojiOptions.forEach(emoji => {
             const option = document.createElement('div');
             option.className = 'emoji-option';
             option.textContent = emoji;
             
-            option.onmousedown = (e) => {
+            // Use onclick instead of addEventListener for more reliable event binding
+            option.onclick = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                this.throwEmoji(emoji, targetPlayer);
+                
+                // Find the current user's ID from the players map
+                const currentUser = Array.from(this.players.entries())
+                    .find(([_, player]) => player.isCurrentUser);
+                
+                if (currentUser && this.ws && this.ws.readyState === WebSocket.OPEN) {
+                    const message = {
+                        type: 'throwEmoji',
+                        emoji: emoji,
+                        targetId: targetPlayer.id,
+                        sourceId: currentUser[0]
+                    };
+                    console.log('Sending emoji message:', message); // Add logging
+                    this.ws.send(JSON.stringify(message));
+                    
+                    // Handle the emoji throw locally for immediate feedback
+                    this.handleEmojiThrown({
+                        emoji: emoji,
+                        source: currentUser[0],
+                        target: targetPlayer.id
+                    });
+                } else {
+                    console.error('WebSocket not ready or current user not found'); // Add error logging
+                }
+                
+                // Keep the selector open for multiple throws
+                return false;
             };
             
             gridContainer.appendChild(option);
         });
-
-        this.emojiSelector.onclick = (e) => {
-            e.stopPropagation();
-        };
-
+        
+        this.emojiSelector.appendChild(gridContainer);
         document.body.appendChild(this.emojiSelector);
-    }
-
-    throwEmoji(emoji, targetPlayer) {
-        // Send the emoji throw to the server first
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-            this.ws.send(JSON.stringify({
-                type: 'throwEmoji',
-                target: targetPlayer.name,
-                emoji: emoji
-            }));
-        }
+        
+        // Position the selector at the center of the clicked player
+        const playerWrapper = e.currentTarget;
+        const rect = playerWrapper.getBoundingClientRect();
+        const selectorWidth = 160;
+        const selectorHeight = 120;
+        
+        // Calculate center position
+        const left = rect.left + (rect.width - selectorWidth) / 2;
+        const top = rect.top - selectorHeight - 10;
+        
+        this.emojiSelector.style.left = `${left}px`;
+        this.emojiSelector.style.top = `${top}px`;
     }
 
     calculateMode(votes) {

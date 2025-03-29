@@ -218,44 +218,85 @@ button:disabled {
     align-items: center;
 }
 
-.player-card {
+.player-wrapper {
     position: absolute;
-    padding: 10px 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 32px;
+    cursor: pointer;
+}
+
+.player-card {
+    position: relative;
+    padding: 6px 6px;
     background: rgba(45, 55, 72, 0.9);
-    border-radius: 8px;
+    border-radius: 6px;
     color: white;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 5px;
+    gap: 2px;
     transition: all 0.3s ease;
     backdrop-filter: blur(4px);
     border: 2px solid transparent;
-    min-width: 100px;
+    min-width: 40px;
+    max-width: 40px;
+    height: 75px;
     text-align: center;
+}
+
+.name-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    overflow: visible;
+    max-width: none;
+    padding: 3px 6px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    order: 1;
+}
+
+.player-name {
+    font-weight: 500;
+    color: white;
+    font-size: 0.7rem;
+    max-width: none;
+    overflow: visible;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.you-indicator {
+    color: #48bba9;
+    font-weight: 600;
+    font-size: 0.6rem;
+    margin-left: 2px;
+    white-space: nowrap;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .player-card.current-user {
     background: rgba(45, 55, 72, 0.95);
     border: 2px solid rgba(72, 187, 170, 0.6);
-    border-radius: 8px;
+    border-radius: 6px;
     box-shadow: 
         0 0 15px rgba(72, 187, 170, 0.15),
         inset 0 0 20px rgba(72, 187, 170, 0.05);
 }
 
-.player-card.current-user .player-name {
+.player-card.current-user + .name-container {
     color: #48bba9;
-}
-
-.player-card .player-name {
-    font-weight: 500;
 }
 
 .player-card .vote-indicator {
     font-size: 1.2em;
     font-weight: bold;
     transition: all 0.3s ease;
+    margin-top: auto;
+    margin-bottom: 4px;
 }
 
 .player-card .vote-indicator.has-voted {
@@ -265,8 +306,8 @@ button:disabled {
 }
 
 .player-card .vote-indicator.revealed {
+    font-size: 1.2em;
     color: #4299e1;
-    font-size: 1.4em;
     text-shadow: 0 0 10px rgba(66, 153, 225, 0.5);
 }
 
@@ -680,12 +721,27 @@ button:disabled {
 }
 
 .emoji-selector {
-    position: fixed;
-    background: rgba(0, 0, 0, 0.8);
+    position: absolute;
+    background: rgba(45, 55, 72, 0.95);
     border-radius: 8px;
     padding: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     z-index: 1000;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(4px);
+    border: 2px solid rgba(72, 187, 170, 0.3);
+    transform-origin: center;
+    animation: popIn 0.2s ease-out forwards;
+}
+
+@keyframes popIn {
+    from {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
 }
 
 .emoji-grid {
@@ -704,43 +760,90 @@ button:disabled {
     font-size: 20px;
     cursor: pointer;
     border-radius: 4px;
-    transition: background-color 0.2s;
+    transition: all 0.2s ease;
+    user-select: none;
 }
 
 .emoji-option:hover {
     background: rgba(255, 255, 255, 0.1);
+    transform: scale(1.1);
 }
 
 .emoji-projectile {
-    position: fixed;
-    font-size: 24px;
-    z-index: 1000;
-    animation: throwEmoji 0.5s cubic-bezier(0.2, 0.8, 0.4, 1) forwards;
+    position: absolute;
+    font-size: 18px;
     pointer-events: none;
+    z-index: 1000;
     transform-origin: center;
-    will-change: transform, opacity;
-    transform: translate(0, 0);
-}
-
-.emoji-hit {
-    position: fixed;
-    font-size: 24px;
-    z-index: 1000;
-    animation: hitEffect 0.5s ease-out forwards;
-    pointer-events: none;
-    will-change: transform, opacity;
-    transform: translate(-50%, -50%);
+    animation: throwEmoji 0.15s linear forwards,
+               glanceOff 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s forwards;
+    opacity: 1;
 }
 
 @keyframes throwEmoji {
     0% {
-        transform: translate(0, 0) scale(1) rotate(0deg);
+        transform: translate(0, 0) rotate(0deg);
         opacity: 1;
     }
     100% {
-        transform: translate(var(--target-x), var(--target-y)) scale(0.5) rotate(360deg);
+        transform: translate(calc(var(--target-x)), calc(var(--target-y))) rotate(30deg);
+        opacity: 1;
+    }
+}
+
+@keyframes glanceOff {
+    0% {
+        transform: translate(calc(var(--target-x)), calc(var(--target-y))) rotate(30deg);
+        opacity: 1;
+    }
+    15% {
+        /* First contact with card edge */
+        transform: translate(calc(var(--target-x) * 0.95), calc(var(--target-y) * 0.95)) rotate(45deg);
+        opacity: 1;
+    }
+    25% {
+        /* Initial bounce back */
+        transform: translate(calc(var(--target-x) * 0.8), calc(var(--target-y) * 0.8)) rotate(60deg);
+        opacity: 1;
+    }
+    35% {
+        /* First random bounce */
+        transform: translate(calc(var(--target-x) * 0.6), calc(var(--target-y) * 0.7)) rotate(75deg);
         opacity: 0.8;
     }
+    45% {
+        /* Second random bounce */
+        transform: translate(calc(var(--target-x) * 0.4), calc(var(--target-y) * 0.5)) rotate(90deg);
+        opacity: 0.5;
+    }
+    55% {
+        /* Third random bounce and start fading out */
+        transform: translate(calc(var(--target-x) * 0.3), calc(var(--target-y) * 0.3)) rotate(105deg);
+        opacity: 0.2;
+    }
+    65% {
+        /* Final position before disappearing */
+        transform: translate(calc(var(--target-x) * 0.2), calc(var(--target-y) * 0.2)) rotate(120deg);
+        opacity: 0;
+    }
+    100% {
+        /* Keep the same final position but ensure it's invisible */
+        transform: translate(calc(var(--target-x) * 0.2), calc(var(--target-y) * 0.2)) rotate(120deg);
+        opacity: 0;
+    }
+}
+
+.emoji-hit {
+    position: absolute;
+    font-size: 32px;
+    pointer-events: none;
+    z-index: 1000;
+    animation: hitEffect 0.4s ease-out 0.15s forwards;
+    transform: translate(-50%, -50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
 }
 
 @keyframes hitEffect {
@@ -748,13 +851,36 @@ button:disabled {
         transform: translate(-50%, -50%) scale(0.5);
         opacity: 0;
     }
-    40% {
-        transform: translate(-50%, -50%) scale(1.5);
+    20% {
+        transform: translate(-50%, -50%) scale(1.1);
+        opacity: 1;
+    }
+    60% {
+        transform: translate(-50%, -50%) scale(1.1);
         opacity: 1;
     }
     100% {
-        transform: translate(-50%, -50%) scale(1);
+        transform: translate(-50%, -50%) scale(0.8);
         opacity: 0;
+    }
+}
+
+.player-card.hit {
+    animation: cardHit 0.4s ease-out 0.15s forwards;
+}
+
+@keyframes cardHit {
+    0% {
+        transform: scale(1);
+    }
+    20% {
+        transform: scale(1.05);
+    }
+    60% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
     }
 }
 

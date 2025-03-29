@@ -286,17 +286,21 @@ wss.on('connection', (ws) => {
                     break;
 
                 case 'throwEmoji':
-                    if (userChannel) {
-                        const channel = channels.get(userChannel);
-                        if (channel) {
-                            broadcast(userChannel, {
-                                type: 'emojiThrown',
-                                source: username,
-                                target: message.target,
-                                emoji: message.emoji
-                            });
-                        }
+                    if (!userChannel || !channels.has(userChannel)) {
+                        ws.send(JSON.stringify({
+                            type: 'error',
+                            message: 'Not in a channel'
+                        }));
+                        return;
                     }
+                    const emojiChannel = channels.get(userChannel);
+                    // Broadcast the emoji throw to all participants
+                    broadcast(userChannel, {
+                        type: 'emojiThrown',
+                        emoji: message.emoji,
+                        source: message.sourceId,
+                        target: message.targetId
+                    });
                     break;
 
                 case 'updateSummary':

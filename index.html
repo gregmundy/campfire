@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planning Poker Online</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Planning Poker</h1>
+            <div id="connection-status"></div>
+            <div id="room-info">
+                <input type="text" id="username" placeholder="Enter your name">
+                <input type="text" id="channel" placeholder="Enter room code (optional)">
+                <button id="join-button">Join Room</button>
+            </div>
+            <div id="room-code" class="hidden">
+                <div class="room-code-container">
+                    <span>Room Code:</span>
+                    <code id="room-code-text"></code>
+                    <button id="copy-link">Copy Link</button>
+                </div>
+            </div>
+        </header>
+
+        <main class="game-container hidden">
+            <div class="game-area">
+                <div class="campfire-container">
+                    <div class="campfire">
+                        <div class="flame"></div>
+                        <div class="flame"></div>
+                        <div class="flame"></div>
+                        <div class="logs"></div>
+                    </div>
+                    <div class="players-circle" id="players-list"></div>
+                </div>
+                <div class="story-section">
+                    <div class="custom-cards-section">
+                        <input type="text" id="custom-cards" placeholder="Enter custom card values (comma-separated, e.g. 1,2,3,5,8,13,21,?,∞)" value="1,2,3,5,8,13,21,?,∞">
+                        <button id="update-cards">Update Cards</button>
+                    </div>
+                    <div class="cards-section">
+                        <div class="card" data-value="1">1</div>
+                        <div class="card" data-value="2">2</div>
+                        <div class="card" data-value="3">3</div>
+                        <div class="card" data-value="5">5</div>
+                        <div class="card" data-value="8">8</div>
+                        <div class="card" data-value="13">13</div>
+                        <div class="card" data-value="21">21</div>
+                        <div class="card" data-value="?">?</div>
+                        <div class="card" data-value="∞">∞</div>
+                    </div>
+                    <div class="results-section">
+                        <button id="reveal-button" class="hidden">Reveal Votes</button>
+                        <div id="results" class="hidden"></div>
+                        <button id="reset-button" class="hidden">Reset Votes</button>
+                    </div>
+                </div>
+                <div class="game-controls">
+                    <div class="story-section">
+                        <input type="text" id="story" placeholder="Enter story description" class="story-input">
+                        <button id="updateStory" class="control-button">Update Story</button>
+                    </div>
+                    <div class="summary-section">
+                        <input type="text" id="summary" placeholder="Enter summary" class="summary-input">
+                        <button id="updateSummary" class="control-button">Update Summary</button>
+                    </div>
+                    <div class="button-group">
+                        <button id="revealButton" class="control-button">Reveal Votes</button>
+                        <button id="resetButton" class="control-button">New Round</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html> 

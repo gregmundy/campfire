@@ -92,10 +92,7 @@ class PlanningPoker {
     }
 
     copyRoomLink() {
-        if (!this.roomCode) {
-            console.error('No room code available');
-            return;
-        }
+        if (!this.roomCode) return;
 
         const url = new URL(window.location.href);
         url.searchParams.set('room', this.roomCode);
@@ -107,16 +104,14 @@ class PlanningPoker {
             setTimeout(() => {
                 this.copyLinkButton.textContent = originalText;
             }, 2000);
-        }).catch(err => {
-            console.error('Failed to copy link:', err);
-            alert('Failed to copy link. Please try again.');
+        }).catch(() => {
+            this.showErrorNotification('Failed to copy link. Please try again.');
         });
     }
 
     connectWebSocket() {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl = `${protocol}//${window.location.host}`;
-        console.log('Connecting to WebSocket:', wsUrl);
         
         // Store join info if we're trying to connect as part of joining
         this.pendingJoin = null;
@@ -130,13 +125,11 @@ class PlanningPoker {
         this.ws = new WebSocket(wsUrl);
 
         this.ws.onopen = () => {
-            console.log('WebSocket connected');
             this.connectionStatus.textContent = 'Connected';
             this.connectionStatus.className = 'connected';
             
             // If we have pending join info, send it now
             if (this.pendingJoin) {
-                console.log('Sending pending join message:', this.pendingJoin);
                 this.ws.send(JSON.stringify({
                     type: 'join',
                     username: this.pendingJoin.username,
@@ -147,7 +140,6 @@ class PlanningPoker {
         };
 
         this.ws.onclose = () => {
-            console.log('WebSocket disconnected');
             this.connectionStatus.textContent = 'Disconnected';
             this.connectionStatus.className = 'disconnected';
             
@@ -155,18 +147,14 @@ class PlanningPoker {
             setTimeout(() => this.connectWebSocket(), 2000);
         };
 
-        this.ws.onerror = (error) => {
-            console.error('WebSocket error:', error);
+        this.ws.onerror = () => {
             this.showErrorNotification('Connection error. Retrying...');
         };
 
         this.ws.onmessage = (event) => {
             try {
-                const message = JSON.parse(event.data);
-                console.log('Received message:', message);
                 this.handleMessage(event);
-            } catch (error) {
-                console.error('Error parsing message:', error);
+            } catch {
                 this.showErrorNotification('Error processing message');
             }
         };
@@ -196,7 +184,6 @@ class PlanningPoker {
         }
 
         // Send join message if connected
-        console.log('Sending join message');
         this.ws.send(JSON.stringify({
             type: 'join',
             username: username,
@@ -207,12 +194,9 @@ class PlanningPoker {
     handleMessage(event) {
         try {
             const message = JSON.parse(event.data);
-            console.log('Processing message:', message);
 
             switch (message.type) {
-                case 'channel_state':
-                    console.log('Processing channel state:', message);
-                    
+                case 'channel_state':                    
                     // Show game UI on first successful channel state
                     if (this.isFirstState) {
                         if (this.gameContainer) {
@@ -276,7 +260,6 @@ class PlanningPoker {
                     }
                     
                     if (message.cardSet && JSON.stringify(message.cardSet) !== JSON.stringify(this.currentCardSet)) {
-                        console.log('Received card set update:', message.cardSet);
                         this.currentCardSet = message.cardSet;
                         this.updateCardSetUI(message.cardSet);
                     }
@@ -285,31 +268,24 @@ class PlanningPoker {
                     }
                     break;
                 case 'player_joined':
-                    console.log('Player joined:', message.username);
                     this.showPlayerJoinNotification(message.username);
                     break;
                 case 'player_left':
-                    console.log('Player left:', message.username);
                     this.showPlayerLeftNotification(message.username);
                     break;
                 case 'emojiThrown':
-                    console.log('Emoji thrown:', message);
                     this.handleEmojiThrown(message);
                     break;
                 case 'error':
-                    console.error('Server error:', message.message);
-                    // If it's an "Already joined" error, we can ignore it as we're already in the room
                     if (message.message === 'Already joined') {
-                        console.log('Already in room, continuing...');
                         return;
                     }
                     this.showErrorNotification(message.message);
                     break;
                 default:
-                    console.log('Unknown message type:', message.type);
+                    this.showErrorNotification('Unknown message type received');
             }
         } catch (error) {
-            console.error('Error processing message:', error);
             this.showErrorNotification('Error processing message');
         }
     }
@@ -334,10 +310,7 @@ class PlanningPoker {
     }
 
     updateCardSet() {
-        if (!this.customCardsInput) {
-            console.error('Custom cards input not found');
-            return;
-        }
+        if (!this.customCardsInput) return;
 
         const values = this.customCardsInput.value
             .split(',')
@@ -351,23 +324,18 @@ class PlanningPoker {
 
         // Check if the new card set is different from current
         if (JSON.stringify(values) === JSON.stringify(this.currentCardSet)) {
-            console.log('Card set unchanged, skipping update');
             return;
         }
 
-        console.log('Updating card set:', values);
         this.currentCardSet = values;
         this.updateCardSetUI(values);
 
         // Send the new card set to the server
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-            console.log('Sending card set update to server');
             this.ws.send(JSON.stringify({
                 type: 'updateCardSet',
                 cards: values
             }));
-        } else {
-            console.error('WebSocket not connected');
         }
     }
 
@@ -403,7 +371,6 @@ class PlanningPoker {
     }
 
     handleEmojiThrown(message) {
-        console.log('Received emoji throw:', message);
         const targetCard = Array.from(document.querySelectorAll('.player-card'))
             .find(card => card.textContent.includes(message.target));
         
@@ -418,7 +385,6 @@ class PlanningPoker {
                 });
             
             if (!sourceCard) {
-                console.error('Source card not found for player:', message.source);
                 return;
             }
             
@@ -431,18 +397,6 @@ class PlanningPoker {
             // Calculate the distance to travel
             const dx = targetX - sourceX;
             const dy = targetY - sourceY;
-
-            console.log('Handling emoji throw:', {
-                emoji: message.emoji,
-                source: message.source,
-                target: message.target,
-                sourceX,
-                sourceY,
-                targetX,
-                targetY,
-                dx,
-                dy
-            });
 
             // Create projectile with unique ID
             const projectileId = `projectile-${Date.now()}-${Math.random()}`;
@@ -478,14 +432,10 @@ class PlanningPoker {
                     if (hitElement) hitElement.remove();
                 }, 500);
             }, 400);
-        } else {
-            console.error('Target card not found for player:', message.target);
         }
     }
 
     selectCard(card) {
-        console.log('Card clicked:', card.dataset.value);
-        
         if (this.revealed) {
             this.showErrorNotification("Can't vote while votes are revealed");
             return;
@@ -520,7 +470,6 @@ class PlanningPoker {
         
         // Send vote to server
         try {
-            console.log('Sending vote:', card.dataset.value);
             this.ws.send(JSON.stringify({
                 type: 'vote',
                 vote: card.dataset.value
@@ -654,7 +603,6 @@ class PlanningPoker {
 
     revealVotes() {
         if (this.ws.readyState === WebSocket.OPEN) {
-            console.log('Revealing votes');
             this.ws.send(JSON.stringify({
                 type: 'reveal'
             }));
@@ -663,7 +611,6 @@ class PlanningPoker {
 
     resetVotes() {
         if (this.ws.readyState === WebSocket.OPEN) {
-            console.log('Starting new round');
             this.ws.send(JSON.stringify({
                 type: 'reset'
             }));
@@ -819,7 +766,6 @@ class PlanningPoker {
         if (this.emojiSelector && 
             !this.emojiSelector.contains(e.target) && 
             !e.target.closest('.player-card')) {
-            console.log('Closing emoji selector - clicked outside');
             this.emojiSelector.remove();
             this.emojiSelector = null;
         }
@@ -925,7 +871,6 @@ class PlanningPoker {
             option.onmousedown = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log('Emoji selected:', emoji);
                 this.throwEmoji(emoji, targetPlayer);
             };
             
@@ -942,19 +887,12 @@ class PlanningPoker {
     throwEmoji(emoji, targetPlayer) {
         // Send the emoji throw to the server first
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-            console.log('Sending emoji throw:', { emoji, target: targetPlayer.name });
             this.ws.send(JSON.stringify({
                 type: 'throwEmoji',
                 target: targetPlayer.name,
                 emoji: emoji
             }));
-        } else {
-            console.error('WebSocket not connected');
-            return;
         }
-
-        // Don't create any animations here - they will be handled by handleEmojiThrown
-        // when the server broadcasts the emoji throw back to all clients
     }
 
     calculateMode(votes) {

@@ -78,7 +78,7 @@ function broadcast(channel, message, excludeClient = null) {
                 try {
                     ws.send(JSON.stringify(message));
                 } catch (error) {
-                    console.error('Error broadcasting message:', error);
+                    // Silent fail for broadcast errors
                 }
             }
         }
@@ -139,7 +139,6 @@ class Channel {
         for (const [ws, data] of this.participants.entries()) {
             if (data.username === username) {
                 data.vote = vote;
-                console.log(`Updated vote for ${username}: ${vote}`);
                 // Broadcast the vote update immediately
                 this.broadcastState();
                 break;
@@ -154,7 +153,6 @@ class Channel {
 
     revealVotes() {
         this.revealed = true;
-        console.log('Revealing votes for channel:', this.code);
         this.broadcastState();
     }
 
@@ -163,7 +161,6 @@ class Channel {
         for (const participant of this.participants.values()) {
             participant.vote = null;
         }
-        console.log('Resetting votes for channel:', this.code);
         this.broadcastState();
     }
 
@@ -201,10 +198,9 @@ class Channel {
                         ])
                     )
                 };
-                console.log(`Sending state to ${data.username}:`, personalizedState);
                 ws.send(JSON.stringify(personalizedState));
             } catch (error) {
-                console.error('Error sending state to participant:', error);
+                // Silent fail for individual participant state send errors
             }
         }
     }
@@ -249,79 +245,33 @@ wss.on('connection', (ws) => {
                         }));
                         return;
                     }
-                    
-                    // Add the participant first
+
                     channel.addParticipant(ws, username, userChannel);
-
-                    // Broadcast join to others
-                    broadcast(userChannel, {
-                        type: 'player_joined',
-                        username: username
-                    }, ws);
-
-                    // Send current state to the new participant
-                    channel.broadcastState();
                     break;
 
                 case 'vote':
-                    if (userChannel) {
+                    if (userChannel && username) {
                         const channel = channels.get(userChannel);
-                        channel.updateVote(username, message.vote);
+                        if (channel) {
+                            channel.updateVote(username, message.vote);
+                        }
                     }
                     break;
 
                 case 'reveal':
                     if (userChannel) {
                         const channel = channels.get(userChannel);
-                        channel.revealVotes();
+                        if (channel) {
+                            channel.revealVotes();
+                        }
                     }
                     break;
 
                 case 'reset':
                     if (userChannel) {
                         const channel = channels.get(userChannel);
-                        channel.resetVotes();
-                    }
-                    break;
-
-                case 'newRound':
-                    if (userChannel) {
-                        const channel = channels.get(userChannel);
-                        channel.resetVotes();
-                        channel.story = message.story || '';
-                        broadcast(userChannel, {
-                            type: 'roundReset',
-                            story: channel.story
-                        });
-                    }
-                    break;
-
-                case 'updateStory':
-                    if (userChannel) {
-                        const channel = channels.get(userChannel);
-                        channel.story = message.story;
-                        broadcast(userChannel, {
-                            type: 'storyUpdated',
-                            story: message.story
-                        });
-                    }
-                    break;
-
-                case 'throwEmoji':
-                    if (userChannel) {
-                        const channel = channels.get(userChannel);
-                        // Broadcast emoji to all participants
-                        for (const [ws, participant] of channel.participants.entries()) {
-                            try {
-                                ws.send(JSON.stringify({
-                                    type: 'emojiThrown',
-                                    emoji: message.emoji,
-                                    target: message.target,
-                                    source: username
-                                }));
-                            } catch (error) {
-                                console.error('Error sending emoji to participant:', error);
-                            }
+                        if (channel) {
+                            channel.resetVotes();
                         }
                     }
                     break;
@@ -329,42 +279,52 @@ wss.on('connection', (ws) => {
                 case 'updateCardSet':
                     if (userChannel) {
                         const channel = channels.get(userChannel);
-                        channel.updateCardSet(message.cards);
+                        if (channel) {
+                            channel.updateCardSet(message.cards);
+                        }
                     }
                     break;
 
-                default:
-                    console.warn('Unknown message type:', message.type);
+                case 'throwEmoji':
+                    if (userChannel) {
+                        const channel = channels.get(userChannel);
+                        if (channel) {
+                            broadcast(userChannel, {
+                                type: 'emojiThrown',
+                                source: username,
+                                target: message.target,
+                                emoji: message.emoji
+                            });
+                        }
+                    }
+                    break;
+
+                case 'updateSummary':
+                    if (userChannel) {
+                        const channel = channels.get(userChannel);
+                        if (channel) {
+                            channel.updateSummary(message.summary);
+                        }
+                    }
+                    break;
             }
         } catch (error) {
-            console.error('Error processing message:', error);
-            ws.send(JSON.stringify({
-                type: 'error',
-                message: 'Invalid message format'
-            }));
+            // Silent fail for message parsing errors
         }
     });
 
     ws.on('close', () => {
-        if (userChannel && channels.has(userChannel)) {
+        if (userChannel) {
             const channel = channels.get(userChannel);
-            channel.removeParticipant(ws);
-
-            // Remove channel if empty
-            if (channel.participants.size === 0) {
-                channels.delete(userChannel);
-            } else {
-                broadcast(userChannel, {
-                    type: 'userLeft',
-                    username: username,
-                    participants: Array.from(channel.participants.values())
-                });
+            if (channel) {
+                channel.removeParticipant(ws);
+                
+                // Remove channel if empty
+                if (channel.participants.size === 0) {
+                    channels.delete(userChannel);
+                }
             }
         }
-    });
-
-    ws.on('error', (error) => {
-        console.error('WebSocket error:', error);
     });
 });
 

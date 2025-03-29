@@ -17,9 +17,11 @@ class PlanningPoker {
         this.usernameInput = document.getElementById('username');
         this.channelInput = document.getElementById('channel');
         this.joinButton = document.getElementById('join-button');
+        this.generateRoomButton = document.getElementById('generate-room');
         this.joinContainer = document.querySelector('.join-container');
         this.gameContainer = document.querySelector('.game-container');
         this.roomCodeDiv = document.getElementById('room-code');
+        this.roomCodeText = document.getElementById('room-code-text');
         this.playersList = document.getElementById('players-list');
         this.cardsSection = document.querySelector('.cards-section');
         this.cards = document.querySelectorAll('.card');
@@ -27,7 +29,6 @@ class PlanningPoker {
         this.resetButton = document.getElementById('reset-button');
         this.results = document.getElementById('results');
         this.connectionStatus = document.getElementById('connection-status');
-        this.roomCodeText = document.getElementById('room-code-text');
         this.copyLinkButton = document.getElementById('copy-link');
         this.campfireContainer = document.querySelector('.campfire-container');
         this.customCardsInput = document.getElementById('custom-cards');
@@ -36,6 +37,10 @@ class PlanningPoker {
         // Event listeners
         if (this.joinButton) {
             this.joinButton.addEventListener('click', () => this.joinGame());
+        }
+
+        if (this.generateRoomButton) {
+            this.generateRoomButton.addEventListener('click', () => this.generateRoomCode());
         }
         
         // Add click handlers to initial cards
@@ -88,6 +93,9 @@ class PlanningPoker {
             this.roomCode = roomCode.toUpperCase();
             // Auto-focus the username input if we have a room code
             this.usernameInput.focus();
+        } else {
+            // If no room code in URL, connect to WebSocket and generate one automatically
+            this.connectWebSocket();
         }
     }
 
@@ -136,6 +144,11 @@ class PlanningPoker {
                     channel: this.pendingJoin.channel
                 }));
                 this.pendingJoin = null;
+            } else if (!this.channelInput.value) {
+                // If no room code is entered, generate one automatically
+                this.ws.send(JSON.stringify({
+                    type: 'generateRoom'
+                }));
             }
         };
 
@@ -197,6 +210,9 @@ class PlanningPoker {
             console.log('Received message:', message); // Add logging
 
             switch (message.type) {
+                case 'roomCode':
+                    this.channelInput.value = message.code;
+                    break;
                 case 'channel_state':                    
                     // Show game UI on first successful channel state
                     if (this.isFirstState) {
@@ -1012,6 +1028,16 @@ class PlanningPoker {
         const summaryElement = document.getElementById('summary');
         if (summaryElement) {
             summaryElement.textContent = summary;
+        }
+    }
+
+    generateRoomCode() {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify({
+                type: 'generateRoom'
+            }));
+        } else {
+            this.showErrorNotification('Not connected to server');
         }
     }
 }

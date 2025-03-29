@@ -13,7 +13,9 @@
             <div id="connection-status"></div>
             <div id="room-info">
                 <input type="text" id="username" placeholder="Enter your name">
-                <input type="text" id="channel" placeholder="Enter room code (optional)">
+                <div class="room-code-input-group">
+                    <input type="text" id="channel" placeholder="Enter room code (optional)">
+                </div>
                 <button id="join-button">Join Room</button>
             </div>
             <div id="room-code" class="hidden">
@@ -32,7 +34,12 @@
                         <div class="flame"></div>
                         <div class="flame"></div>
                         <div class="flame"></div>
-                        <div class="logs"></div>
+                        <div class="logs">
+                            <div class="side-log left"></div>
+                            <div class="side-log right"></div>
+                            <div class="side-log back-left"></div>
+                            <div class="side-log back-right"></div>
+                        </div>
                     </div>
                     <div class="players-circle" id="players-list"></div>
                 </div>

@@ -60,11 +60,11 @@ const wss = new WebSocketServer({ server });
 // Store channels and their participants
 const channels = new Map();
 
-// Generate a random room code
+// Generate a random room code (20 characters)
 function generateRoomCode() {
-    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     let code = '';
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 20; i++) {
         code += characters.charAt(Math.floor(Math.random() * characters.length));
     }
     return code;
@@ -247,6 +247,14 @@ wss.on('connection', (ws) => {
                     }
 
                     channel.addParticipant(ws, username, userChannel);
+                    break;
+
+                case 'generateRoom':
+                    const newCode = generateRoomCode();
+                    ws.send(JSON.stringify({
+                        type: 'roomCode',
+                        code: newCode
+                    }));
                     break;
 
                 case 'vote':

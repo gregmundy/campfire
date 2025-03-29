@@ -9,6 +9,7 @@ class PlanningPoker {
         this.currentCardSet = [];
         this.previousPlayers = new Set(); // Track previous players for join notifications
         this.isFirstState = true; // Track if this is the first state update
+        this.maxPlayers = 20; // Add max players limit
         this.presetDecks = {
             fibonacci: ['1', '2', '3', '5', '8', '13', '21', '?'],
             'modified-fibonacci': ['0', '½', '1', '2', '3', '5', '8', '13', '20', '40', '100', '?'],
@@ -16,6 +17,32 @@ class PlanningPoker {
             powers: ['1', '2', '4', '8', '16', '32', '64', '?']
         };
         this.init();
+        this.createForestBackground();
+    }
+
+    createForestBackground() {
+        // Create forest background container
+        const forest = document.createElement('div');
+        forest.className = 'forest-background';
+        
+        // Add trees
+        for (let i = 0; i < 8; i++) {
+            const tree = document.createElement('div');
+            tree.className = 'tree';
+            forest.appendChild(tree);
+        }
+        
+        // Add ambient particles
+        for (let i = 0; i < 20; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.style.left = `${Math.random() * 100}%`;
+            particle.style.animationDelay = `${Math.random() * 20}s`;
+            particle.style.animationDuration = `${15 + Math.random() * 15}s`;
+            forest.appendChild(particle);
+        }
+        
+        document.body.insertBefore(forest, document.body.firstChild);
     }
 
     init() {
@@ -268,6 +295,12 @@ class PlanningPoker {
             return;
         }
 
+        // Check current player count before joining
+        if (this.players.size >= this.maxPlayers) {
+            this.showErrorNotification(`Room is full (max ${this.maxPlayers} players)`);
+            return;
+        }
+
         // If WebSocket isn't connected, connect and store join info
         if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
             this.pendingJoin = { username, channel };
@@ -293,6 +326,12 @@ class PlanningPoker {
                     this.channelInput.value = message.code;
                     break;
                 case 'channel_state':                    
+                    // Check player limit before updating state
+                    if (Object.keys(message.players).length > this.maxPlayers) {
+                        this.showErrorNotification(`Room is full (max ${this.maxPlayers} players)`);
+                        return;
+                    }
+                    
                     // Show game UI on first successful channel state
                     if (this.isFirstState) {
                         if (this.gameContainer) {
@@ -653,31 +692,67 @@ class PlanningPoker {
         this.players = new Map(Object.entries(players));
         
         const playersList = document.querySelector('.players-circle');
-        if (!playersList) return;
+        const campfireContainer = document.querySelector('.campfire-container');
+        if (!playersList || !campfireContainer) return;
 
         // Clear existing players
         playersList.innerHTML = '';
 
-        // Calculate positions for each player
-        const playerCount = this.players.size;
-        const radius = 250; // Increased radius for better spacing
-        const centerX = 300; // Half of campfire-container width
-        const centerY = 300; // Half of campfire-container height
+        // Get container dimensions
+        const containerWidth = campfireContainer.offsetWidth;
+        const containerHeight = campfireContainer.offsetHeight;
+
+        // Calculate the safe area for circle
+        const safeAreaTop = 60; // Space for header
+        const safeAreaBottom = 120; // Space for cards
+        
+        // Calculate usable dimensions
+        const usableHeight = containerHeight - safeAreaTop - safeAreaBottom;
+        const usableWidth = containerWidth;
+        const minDimension = Math.min(usableWidth, usableHeight);
+
+        // Center coordinates (adjust centerY to account for the header and cards space)
+        const centerX = containerWidth / 2;
+        const centerY = (containerHeight - safeAreaBottom + safeAreaTop) / 2;
 
         // Sort players to ensure consistent positioning
         const sortedPlayers = Array.from(this.players.entries())
             .sort(([idA], [idB]) => idA.localeCompare(idB));
 
-        sortedPlayers.forEach(([id, player], index) => {
-            const angle = (index * 2 * Math.PI) / playerCount;
-            const x = centerX + radius * Math.cos(angle);
-            const y = centerY + radius * Math.sin(angle);
+        // Calculate optimal radius for 10 players
+        const cardWidth = 60; // Width of player card
+        const cardHeight = 85; // Height of player card
+        
+        // Increase radius to 45% of the minimum dimension for better spacing
+        const radius = minDimension * 0.45;
 
+        // Calculate minimum spacing between players
+        const minSpacing = Math.min(10, sortedPlayers.length) <= 6 ? 140 : 120;
+        const circumference = 2 * Math.PI * radius;
+        const spacing = circumference / Math.min(10, sortedPlayers.length);
+
+        // Adjust radius if spacing is too small
+        const finalRadius = spacing < minSpacing ? (minSpacing * Math.min(10, sortedPlayers.length)) / (2 * Math.PI) : radius;
+
+        // Create players with their positions
+        sortedPlayers.forEach(([id, player], index) => {
+            if (index >= 10) return; // Skip if more than 10 players
+
+            // Calculate position in circle
+            // Start from the top (12 o'clock position) and go clockwise
+            // Subtract π/2 to start from the top
+            const angle = (-Math.PI / 2) + (index * (2 * Math.PI / Math.min(10, sortedPlayers.length)));
+            
+            // Calculate final position
+            const x = centerX + finalRadius * Math.cos(angle);
+            const y = centerY + finalRadius * Math.sin(angle);
+            
             const playerWrapper = document.createElement('div');
             playerWrapper.className = 'player-wrapper';
             playerWrapper.style.left = `${x}px`;
             playerWrapper.style.top = `${y}px`;
-            playerWrapper.dataset.playerId = id; // Set the player ID
+            playerWrapper.dataset.playerId = id;
+            playerWrapper.dataset.circle = "1";
 
             // Add click handler for emoji selector
             if (!player.isCurrentUser) {
@@ -695,7 +770,7 @@ class PlanningPoker {
                 playerCard.classList.add('current-user');
                 playerWrapper.style.cursor = 'default';
             }
-
+            
             const voteIndicator = document.createElement('div');
             voteIndicator.className = 'vote-indicator';
             if (player.vote !== null && player.vote !== undefined) {
@@ -717,7 +792,7 @@ class PlanningPoker {
 
             const youIndicator = document.createElement('span');
             youIndicator.className = 'you-indicator';
-            youIndicator.textContent = '(you)';
+            youIndicator.textContent = 'you';
 
             nameContainer.appendChild(playerName);
             if (player.isCurrentUser) {

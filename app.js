@@ -891,6 +891,7 @@ class PlanningPoker {
             const playerName = document.createElement('span');
             playerName.className = 'player-name';
             playerName.textContent = player.name;
+            playerName.setAttribute('data-name', player.name);
 
             const youIndicator = document.createElement('span');
             youIndicator.className = 'you-indicator';

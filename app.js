@@ -193,8 +193,8 @@ class PlanningPoker {
         const params = new URLSearchParams(window.location.search);
         const roomCode = params.get('room');
         if (roomCode) {
-            this.channelInput.value = roomCode.toUpperCase();
-            this.roomCode = roomCode.toUpperCase();
+            this.channelInput.value = roomCode;
+            this.roomCode = roomCode;
             // Auto-focus the username input if we have a room code
             this.usernameInput.focus();
         } else {
@@ -238,7 +238,7 @@ class PlanningPoker {
         if (this.usernameInput?.value && this.channelInput?.value) {
             this.pendingJoin = {
                 username: this.usernameInput.value.trim(),
-                channel: this.channelInput.value.trim().toUpperCase()
+                channel: this.channelInput.value.trim()
             };
         }
 
@@ -291,7 +291,7 @@ class PlanningPoker {
 
     joinGame() {
         const username = this.usernameInput.value.trim();
-        const channel = this.channelInput.value.trim().toUpperCase();
+        const channel = this.channelInput.value.trim();
         
         if (!username) {
             this.showErrorNotification('Please enter a username');
@@ -1343,7 +1343,7 @@ class PlanningPoker {
 
     updateRoomCode(roomCode) {
         if (roomCode) {
-            this.roomCode = roomCode.toUpperCase();
+            this.roomCode = roomCode;
             this.roomCodeText.textContent = this.roomCode;
             this.roomCodeDiv.classList.remove('hidden');
             this.roomCodeDiv.classList.add('compact');
@@ -1421,13 +1421,12 @@ class PlanningPoker {
     }
 
     generateRoomCode() {
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-            this.ws.send(JSON.stringify({
-                type: 'generateRoom'
-            }));
-        } else {
-            this.showErrorNotification('Not connected to server');
+        const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+        let code = '';
+        for (let i = 0; i < 20; i++) {
+            code += letters.charAt(Math.floor(Math.random() * letters.length));
         }
+        return code;
     }
 
     handleDeckTypeChange() {

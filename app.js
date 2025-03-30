@@ -9,7 +9,8 @@ class PlanningPoker {
         this.currentCardSet = [];
         this.previousPlayers = new Set(); // Track previous players for join notifications
         this.isFirstState = true; // Track if this is the first state update
-        this.maxPlayers = 20; // Add max players limit
+        this.maxPlayers = 50; // Update max players limit to 50
+        this.wasKicked = false; // Add flag to track if user was kicked
         this.presetDecks = {
             fibonacci: ['1', '2', '3', '5', '8', '13', '21', '?'],
             'modified-fibonacci': ['0', '½', '1', '2', '3', '5', '8', '13', '20', '40', '100', '?'],
@@ -224,6 +225,11 @@ class PlanningPoker {
     }
 
     connectWebSocket() {
+        // Don't reconnect if user was kicked
+        if (this.wasKicked) {
+            return;
+        }
+
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl = `${protocol}//${window.location.host}`;
         
@@ -262,12 +268,16 @@ class PlanningPoker {
             this.connectionStatus.innerHTML = '<span>Disconnected</span>';
             this.connectionStatus.className = 'disconnected';
             
-            // Try to reconnect after 2 seconds
-            setTimeout(() => this.connectWebSocket(), 2000);
+            // Only try to reconnect if user wasn't kicked
+            if (!this.wasKicked) {
+                setTimeout(() => this.connectWebSocket(), 2000);
+            }
         };
 
         this.ws.onerror = () => {
-            this.showErrorNotification('Connection error. Retrying...');
+            if (!this.wasKicked) {
+                this.showErrorNotification('Connection error. Retrying...');
+            }
         };
 
         this.ws.onmessage = (event) => {
@@ -319,13 +329,97 @@ class PlanningPoker {
     handleMessage(event) {
         try {
             const message = JSON.parse(event.data);
-            console.log('Received message:', message); // Add logging
+            console.log('Received message:', message);
 
+            // Handle player kick first, before any other state updates
+            if (message.type === 'playerKicked') {
+                console.log('=== KICK MESSAGE RECEIVED ===');
+                console.log('Kick message details:', {
+                    playerId: message.playerId,
+                    playerName: message.playerName,
+                    isKickedUser: message.isKickedUser,
+                    currentPlayers: Array.from(this.players.keys())
+                });
+                
+                // Check if this user was kicked
+                if (message.isKickedUser) {
+                    // This user was kicked
+                    console.log('Current user was kicked');
+                    
+                    // Set kicked flag to prevent reconnection
+                    this.wasKicked = true;
+                    
+                    // Show kicked notification
+                    this.showErrorNotification('You have been removed from the room');
+                    
+                    // Reset the game state
+                    this.resetGameState();
+                    
+                    // Show join container
+                    if (this.joinContainer) {
+                        this.joinContainer.classList.remove('hidden');
+                    }
+                    
+                    // Hide game container
+                    if (this.gameContainer) {
+                        this.gameContainer.classList.add('hidden');
+                    }
+                    
+                    // Show persistent kick popup
+                    this.showKickPopup();
+                    
+                    // Close the WebSocket connection
+                    if (this.ws) {
+                        this.ws.close();
+                    }
+                    
+                    return;
+                }
+                
+                // Remove player from local state
+                if (this.players.has(message.playerId)) {
+                    console.log('Found player in local state, removing...');
+                    this.players.delete(message.playerId);
+                    
+                    // Remove player from circle if present
+                    const playerWrapper = document.querySelector(`.player-wrapper[data-player-id="${message.playerId}"]`);
+                    if (playerWrapper) {
+                        console.log('Found player wrapper in circle, removing...');
+                        playerWrapper.remove();
+                    } else {
+                        console.log('No player wrapper found in circle');
+                    }
+                    
+                    // Remove player from table if present
+                    const playerRow = document.querySelector(`.player-row[data-player-id="${message.playerId}"]`);
+                    if (playerRow) {
+                        console.log('Found player row in table, removing...');
+                        playerRow.remove();
+                    } else {
+                        console.log('No player row found in table');
+                    }
+                    
+                    // Update the UI to reflect the change
+                    console.log('Updating players list after kick');
+                    this.updatePlayersList(Object.fromEntries(this.players));
+                } else {
+                    console.log('Player not found in local state:', message.playerId);
+                }
+                this.showPlayerKickedNotification(message.playerName);
+                return; // Exit early after handling kick
+            }
+
+            // Handle other message types
             switch (message.type) {
                 case 'roomCode':
                     this.channelInput.value = message.code;
                     break;
-                case 'channel_state':                    
+                case 'channel_state':
+                    console.log('=== CHANNEL STATE UPDATE ===');
+                    console.log('Channel state details:', {
+                        players: Object.keys(message.players),
+                        currentPlayers: Array.from(this.players.keys())
+                    });
                     // Check player limit before updating state
                     if (Object.keys(message.players).length > this.maxPlayers) {
                         this.showErrorNotification(`Room is full (max ${this.maxPlayers} players)`);
@@ -382,6 +476,7 @@ class PlanningPoker {
                         }
                     }
                     
+                    console.log('Updating players list with channel state');
                     this.updatePlayersList(message.players);
                     this.updateRoomCode(message.roomCode);
                     this.updateVotingState(message.revealed);
@@ -422,7 +517,7 @@ class PlanningPoker {
                     this.showErrorNotification('Unknown message type received');
             }
         } catch (error) {
-            console.error('Error processing message:', error); // Add error logging
+            console.error('Error processing message:', error);
             this.showErrorNotification('Error processing message');
         }
     }
@@ -687,6 +782,17 @@ class PlanningPoker {
         }, 3000);
     }
 
+    showPlayerKickedNotification(playerName) {
+        const notification = document.createElement('div');
+        notification.className = 'player-join-notification error';
+        notification.textContent = `${playerName} has been removed from the game`;
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+            notification.remove();
+        }, 3000);
+    }
+
     updatePlayersList(players) {
         // Convert players object to Map for easier access
         this.players = new Map(Object.entries(players));
@@ -713,30 +819,33 @@ class PlanningPoker {
             .filter(([_, player]) => !player.isCurrentUser)
             .sort(([idA], [idB]) => idA.localeCompare(idB));
 
-        // Combine players: current user first, then others up to 9 more
+        // Combine players: current user first, then others up to 9 more (max 10 total)
         const circlePlayers = currentUserEntry ? [currentUserEntry] : [];
         circlePlayers.push(...otherPlayers.slice(0, 9));
 
         // Calculate positions for circle players
         const containerWidth = campfireContainer.offsetWidth;
         const containerHeight = campfireContainer.offsetHeight;
-        const safeAreaTop = 60;
-        const safeAreaBottom = 120;
+        const safeAreaTop = 100; // Increased from 80 to 100
+        const safeAreaBottom = 160; // Increased from 140 to 160
         const usableHeight = containerHeight - safeAreaTop - safeAreaBottom;
         const usableWidth = containerWidth;
         const minDimension = Math.min(usableWidth, usableHeight);
         const centerX = containerWidth / 2;
         const centerY = (containerHeight - safeAreaBottom + safeAreaTop) / 2;
-        const radius = minDimension * 0.45;
+        
+        // Increase base radius to make circle wider
+        const radius = minDimension * 0.52; // Increased from 0.48 to 0.52
 
-        // Calculate spacing
-        const minSpacing = circlePlayers.length <= 6 ? 140 : 120;
+        // Calculate spacing with increased minimum values
+        const minSpacing = circlePlayers.length <= 6 ? 180 : 160; // Increased from 160/140 to 180/160
         const circumference = 2 * Math.PI * radius;
         const spacing = circumference / circlePlayers.length;
         const finalRadius = spacing < minSpacing ? (minSpacing * circlePlayers.length) / (2 * Math.PI) : radius;
 
         // Create players in the circle
         circlePlayers.forEach(([id, player], index) => {
+            // Start angle from top (-π/2) and distribute players evenly
             const angle = (-Math.PI / 2) + (index * (2 * Math.PI / circlePlayers.length));
             const x = centerX + finalRadius * Math.cos(angle);
             const y = centerY + finalRadius * Math.sin(angle);
@@ -1103,17 +1212,85 @@ class PlanningPoker {
         });
         
         this.emojiSelector.appendChild(gridContainer);
+
+        // Find current user
+        const currentUser = Array.from(this.players.entries())
+            .find(([_, player]) => player.isCurrentUser);
+
+        // Only show kick option if not targeting self
+        if (currentUser && currentUser[0] !== targetPlayer.id) {
+            // Add divider
+            const divider = document.createElement('div');
+            divider.className = 'emoji-selector-divider';
+            this.emojiSelector.appendChild(divider);
+
+            // Add kick option
+            const kickOption = document.createElement('div');
+            kickOption.className = 'kick-option';
+            kickOption.innerHTML = '<span class="kick-icon">🗑️</span> Remove Player';
+            
+            kickOption.onclick = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                this.showKickConfirmation(targetPlayer, currentUser, () => {
+                    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                        this.ws.send(JSON.stringify({
+                            type: 'kickPlayer',
+                            targetId: targetPlayer.id,
+                            roomCode: this.roomCode,
+                            sourceId: currentUser[0]
+                        }));
+                        
+                        // Close the emoji selector
+                        this.emojiSelector.remove();
+                        this.emojiSelector = null;
+                    }
+                });
+            };
+            
+            this.emojiSelector.appendChild(kickOption);
+        }
+
         document.body.appendChild(this.emojiSelector);
         
-        // Position the selector at the center of the clicked player
+        // Position the selector relative to the player
         const playerWrapper = e.currentTarget;
         const rect = playerWrapper.getBoundingClientRect();
-        const selectorWidth = 160;
-        const selectorHeight = 120;
+        const selectorWidth = 200;
+        const selectorHeight = 240; // Increased height to account for kick option
         
-        // Calculate center position
-        const left = rect.left + (rect.width - selectorWidth) / 2;
-        const top = rect.top - selectorHeight - 10;
+        // Get the center of the screen
+        const centerX = window.innerWidth / 2;
+        
+        // Determine if player is on left or right half of the circle
+        const isOnRightHalf = rect.left + (rect.width / 2) > centerX;
+        
+        // Calculate position based on which side of the circle the player is on
+        let left;
+        if (isOnRightHalf) {
+            // Position selector to the right of the player
+            left = rect.right + 10;
+        } else {
+            // Position selector to the left of the player
+            left = rect.left - selectorWidth - 10;
+        }
+        
+        // Calculate vertical position, centered with the player
+        const top = rect.top + (rect.height - selectorHeight) / 2;
+        
+        // Adjust position if it would go off screen
+        if (left < 10) {
+            left = 10;
+        } else if (left + selectorWidth > window.innerWidth - 10) {
+            left = window.innerWidth - selectorWidth - 10;
+        }
+        
+        if (top < 10) {
+            top = 10;
+        } else if (top + selectorHeight > window.innerHeight - 10) {
+            top = window.innerHeight - selectorHeight - 10;
+        }
         
         this.emojiSelector.style.left = `${left}px`;
         this.emojiSelector.style.top = `${top}px`;
@@ -1282,6 +1459,169 @@ class PlanningPoker {
     closeSettingsModal() {
         // Add a class to trigger the closing animation
         this.settingsModal.classList.add('hidden');
+    }
+
+    showKickConfirmation(targetPlayer, currentUser, callback) {
+        // Create modal container
+        const modal = document.createElement('div');
+        modal.className = 'kick-confirmation-modal';
+        
+        // Create modal content
+        const content = document.createElement('div');
+        content.className = 'kick-confirmation-content';
+        
+        // Add header
+        const header = document.createElement('div');
+        header.className = 'kick-confirmation-header';
+        header.innerHTML = '<span class="warning-icon">⚠️</span> Community Moderation';
+        
+        // Add main text
+        const text = document.createElement('div');
+        text.className = 'kick-confirmation-text';
+        text.textContent = `You are about to remove ${targetPlayer.name} from the game.`;
+        
+        // Add reasons section
+        const reasons = document.createElement('div');
+        reasons.className = 'kick-confirmation-reasons';
+        reasons.innerHTML = `
+            <ul>
+                <li>Disruptive behavior</li>
+                <li>Inappropriate conduct</li>
+                <li>Inactive players</li>
+            </ul>
+        `;
+        
+        // Add buttons
+        const buttons = document.createElement('div');
+        buttons.className = 'kick-confirmation-buttons';
+        
+        const cancelButton = document.createElement('button');
+        cancelButton.className = 'kick-confirm-button cancel';
+        cancelButton.textContent = 'Cancel';
+        
+        const confirmButton = document.createElement('button');
+        confirmButton.className = 'kick-confirm-button confirm';
+        confirmButton.textContent = 'Remove Player';
+        
+        buttons.appendChild(cancelButton);
+        buttons.appendChild(confirmButton);
+        
+        // Assemble modal
+        content.appendChild(header);
+        content.appendChild(text);
+        content.appendChild(reasons);
+        content.appendChild(buttons);
+        modal.appendChild(content);
+        
+        // Add to document
+        document.body.appendChild(modal);
+        
+        // Force reflow to trigger animation
+        modal.offsetHeight;
+        modal.classList.add('visible');
+        
+        // Handle button clicks
+        const closeModal = () => {
+            modal.classList.remove('visible');
+            setTimeout(() => modal.remove(), 300);
+        };
+        
+        cancelButton.onclick = closeModal;
+        
+        confirmButton.onclick = () => {
+            callback();
+            closeModal();
+        };
+        
+        // Close on background click
+        modal.onclick = (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
+        };
+        
+        // Close on escape key
+        const handleEscape = (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+                document.removeEventListener('keydown', handleEscape);
+            }
+        };
+        document.addEventListener('keydown', handleEscape);
+    }
+
+    showKickPopup() {
+        // Create popup container
+        const popup = document.createElement('div');
+        popup.className = 'kick-popup';
+        
+        // Create popup content
+        const content = document.createElement('div');
+        content.className = 'kick-popup-content';
+        
+        // Add header
+        const header = document.createElement('div');
+        header.className = 'kick-popup-header';
+        header.innerHTML = '<span class="warning-icon">⚠️</span> You have been removed from the room';
+        
+        // Add message
+        const message = document.createElement('div');
+        message.className = 'kick-popup-message';
+        message.innerHTML = `
+            <p>You have been removed from the room by another player.</p>
+            <p>Please refresh the page to join a new room.</p>
+        `;
+        
+        // Add refresh button
+        const refreshButton = document.createElement('button');
+        refreshButton.className = 'kick-popup-refresh';
+        refreshButton.textContent = 'Refresh Page';
+        refreshButton.onclick = () => window.location.reload();
+        
+        // Assemble popup
+        content.appendChild(header);
+        content.appendChild(message);
+        content.appendChild(refreshButton);
+        popup.appendChild(content);
+        
+        // Add to document
+        document.body.appendChild(popup);
+        
+        // Force reflow to trigger animation
+        popup.offsetHeight;
+        popup.classList.add('visible');
+    }
+
+    resetGameState() {
+        // Clear all game state
+        this.players = new Map();
+        this.revealed = false;
+        this.currentCardSet = ['1', '2', '3', '5', '8', '13', '21', '?', '∞'];
+        this.summary = '';
+        
+        // Reset UI elements
+        if (this.cardsSection) {
+            this.cardsSection.innerHTML = '';
+            // Create new cards
+            this.currentCardSet.forEach(value => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.dataset.value = value;
+                card.textContent = value;
+                this.cardsSection.appendChild(card);
+            });
+            // Attach event listeners to new cards
+            this.attachCardEventListeners();
+        }
+        
+        if (this.revealButton) {
+            this.revealButton.textContent = 'Reveal Votes';
+            this.revealButton.classList.remove('hidden');
+        }
+        
+        // Clear any existing notifications
+        const notifications = document.querySelectorAll('.notification');
+        notifications.forEach(notification => notification.remove());
     }
 }
 

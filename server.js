@@ -319,6 +319,38 @@ wss.on('connection', (ws) => {
                         }
                     }
                     break;
+
+                case 'kickPlayer':
+                    if (userChannel) {
+                        const channel = channels.get(userChannel);
+                        if (channel) {
+                            // Find the target player's WebSocket connection
+                            const targetWs = Array.from(channel.participants.entries())
+                                .find(([_, data]) => data.username === message.targetId);
+                            
+                            if (targetWs) {
+                                // Send kick message directly to the kicked user
+                                targetWs[0].send(JSON.stringify({
+                                    type: 'playerKicked',
+                                    playerId: message.targetId,
+                                    playerName: targetWs[1].username,
+                                    isKickedUser: true
+                                }));
+
+                                // Remove the player from the channel
+                                channel.removeParticipant(targetWs[0]);
+                                
+                                // Broadcast the kick to all other participants
+                                broadcast(userChannel, {
+                                    type: 'playerKicked',
+                                    playerId: message.targetId,
+                                    playerName: targetWs[1].username,
+                                    isKickedUser: false
+                                }, targetWs[0]);
+                            }
+                        }
+                    }
+                    break;
             }
         } catch (error) {
             // Silent fail for message parsing errors

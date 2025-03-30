@@ -5,7 +5,7 @@ class PlanningPoker {
         this.ws = null;
         this.roomCode = null;
         this.emojiSelector = null;
-        this.emojiOptions = ['😊', '😂', '🤣', '😍', '😎', '🤔', '😴', '💩', '🤡', '👻', '🤖', '📓', '❤️'];
+        this.emojiOptions = ['😊', '😂', '🤣', '😍', '😎', '🤔', '😴', '💩', '🤡', '👻', '🤖', '📓', '❤️', '💸', '🤘'];
         this.currentCardSet = [];
         this.previousPlayers = new Set(); // Track previous players for join notifications
         this.isFirstState = true; // Track if this is the first state update
@@ -230,6 +230,13 @@ class PlanningPoker {
             return;
         }
 
+        // Hide connection status initially
+        if (this.connectionStatus) {
+            this.connectionStatus.classList.remove('connected', 'disconnected');
+            this.connectionStatus.style.opacity = '0';
+            this.connectionStatus.style.pointerEvents = 'none';
+        }
+
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl = `${protocol}//${window.location.host}`;
         
@@ -245,8 +252,16 @@ class PlanningPoker {
         this.ws = new WebSocket(wsUrl);
 
         this.ws.onopen = () => {
-            this.connectionStatus.innerHTML = '<span>Connected</span>';
-            this.connectionStatus.className = 'connected';
+            // Show connection status and update its state
+            if (this.connectionStatus) {
+                this.connectionStatus.classList.add('connected');
+                this.connectionStatus.innerHTML = '<span>Connected</span>';
+                // Force a reflow to ensure the transition works
+                this.connectionStatus.offsetHeight;
+                // Ensure it's visible
+                this.connectionStatus.style.opacity = '1';
+                this.connectionStatus.style.pointerEvents = 'auto';
+            }
             
             // If we have pending join info, send it now
             if (this.pendingJoin) {
@@ -265,8 +280,17 @@ class PlanningPoker {
         };
 
         this.ws.onclose = () => {
-            this.connectionStatus.innerHTML = '<span>Disconnected</span>';
-            this.connectionStatus.className = 'disconnected';
+            // Show disconnected state
+            if (this.connectionStatus) {
+                this.connectionStatus.classList.remove('connected');
+                this.connectionStatus.classList.add('disconnected');
+                this.connectionStatus.innerHTML = '<span>Disconnected</span>';
+                // Force a reflow to ensure the transition works
+                this.connectionStatus.offsetHeight;
+                // Ensure it's visible
+                this.connectionStatus.style.opacity = '1';
+                this.connectionStatus.style.pointerEvents = 'auto';
+            }
             
             // Only try to reconnect if user wasn't kicked
             if (!this.wasKicked) {

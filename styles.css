@@ -31,27 +31,77 @@ h1 {
 #connection-status {
     position: fixed;
     top: 15px;
-    left: 70px; /* Position it to the right of the settings icon */
+    left: 70px;
+    padding: 4px 12px;
+    border-radius: 6px;
     font-size: 0.8rem;
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 4px 10px;
-    border-radius: 6px;
-    background: rgba(45, 55, 72, 0.4);
-    backdrop-filter: blur(4px);
-    transition: all 0.3s ease;
-    border: 1px solid rgba(255, 255, 255, 0.1);
     z-index: 1000;
-    margin: 0;
+    box-shadow: 
+        0 2px 4px rgba(0, 0, 0, 0.1),
+        0 0 15px rgba(0, 0, 0, 0.05),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.1),
+        inset 0 0 30px rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(8px);
+    transition: all 0.3s ease;
+    transform-origin: left;
+    min-width: 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
     height: 28px;
+    background: rgba(45, 55, 72, 0.4);
+    color: #e2e8f0;
+    opacity: 0;
+    pointer-events: none;
 }
 
-#connection-status:hover {
-    animation: statusPulse 2s ease-in-out infinite;
+#connection-status.connected {
+    opacity: 1;
+    pointer-events: auto;
+    color: #48bb78;
+    border-color: rgba(72, 187, 120, 0.3);
+    box-shadow: 0 0 20px rgba(72, 187, 120, 0.1);
+    background: rgba(45, 55, 72, 0.4);
 }
 
-@keyframes statusPulse {
+#connection-status.disconnected {
+    opacity: 1;
+    pointer-events: auto;
+    color: #e53e3e;
+    border-color: rgba(229, 62, 62, 0.3);
+    box-shadow: 0 0 20px rgba(229, 62, 62, 0.1);
+    background: rgba(45, 55, 72, 0.4);
+}
+
+#connection-status::before {
+    content: '';
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    margin-right: 6px;
+    background: #4a5568;
+    transition: all 0.3s ease;
+}
+
+#connection-status.connected::before {
+    background: #48bb78;
+    box-shadow: 
+        0 0 0 2px rgba(72, 187, 120, 0.2),
+        0 0 8px rgba(72, 187, 120, 0.4);
+    animation: pulse 3s ease-in-out infinite;
+}
+
+#connection-status.disconnected::before {
+    background: #e53e3e;
+    box-shadow: 
+        0 0 0 2px rgba(229, 62, 62, 0.2),
+        0 0 8px rgba(229, 62, 62, 0.4);
+    animation: pulse-error 3s ease-in-out infinite;
+}
+
+@keyframes pulse {
     0% {
         transform: scale(1);
         box-shadow: 
@@ -59,10 +109,10 @@ h1 {
             0 0 30px rgba(72, 187, 120, 0.1);
     }
     50% {
-        transform: scale(1.05);
+        transform: scale(1.08);
         box-shadow: 
-            0 0 20px rgba(72, 187, 120, 0.3),
-            0 0 40px rgba(72, 187, 120, 0.2);
+            0 0 25px rgba(72, 187, 120, 0.3),
+            0 0 50px rgba(72, 187, 120, 0.2);
     }
     100% {
         transform: scale(1);
@@ -72,12 +122,66 @@ h1 {
     }
 }
 
+@keyframes pulse-error {
+    0% {
+        transform: scale(1);
+        box-shadow: 
+            0 0 15px rgba(229, 62, 62, 0.2),
+            0 0 30px rgba(229, 62, 62, 0.1);
+    }
+    50% {
+        transform: scale(1.08);
+        box-shadow: 
+            0 0 25px rgba(229, 62, 62, 0.3),
+            0 0 50px rgba(229, 62, 62, 0.2);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 
+            0 0 15px rgba(229, 62, 62, 0.2),
+            0 0 30px rgba(229, 62, 62, 0.1);
+    }
+}
+
+@keyframes heartbeat {
+    0% {
+        transform: scale(1);
+        box-shadow: 
+            0 0 20px rgba(72, 187, 120, 0.2),
+            0 0 40px rgba(72, 187, 120, 0.1);
+    }
+    50% {
+        transform: scale(1.05);
+        box-shadow: 
+            0 0 30px rgba(72, 187, 120, 0.3),
+            0 0 60px rgba(72, 187, 120, 0.2);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 
+            0 0 20px rgba(72, 187, 120, 0.2),
+            0 0 40px rgba(72, 187, 120, 0.1);
+    }
+}
+
 #connection-status.connected:hover {
-    border-color: rgba(72, 187, 120, 0.4);
+    transform: scale(1.05);
+    background: rgba(72, 187, 120, 0.1);
+    border-color: rgba(72, 187, 120, 0.5);
+    box-shadow: 
+        0 0 20px rgba(72, 187, 120, 0.2),
+        0 0 40px rgba(72, 187, 120, 0.1);
+    animation: heartbeat 2s ease-in-out infinite;
 }
 
 #connection-status.disconnected:hover {
-    border-color: rgba(229, 62, 62, 0.4);
+    transform: scale(1.05);
+    background: rgba(229, 62, 62, 0.1);
+    border-color: rgba(229, 62, 62, 0.5);
+    box-shadow: 
+        0 0 20px rgba(229, 62, 62, 0.2),
+        0 0 40px rgba(229, 62, 62, 0.1);
+    animation: heartbeat 2s ease-in-out infinite;
 }
 
 #connection-status::before {
@@ -100,7 +204,7 @@ h1 {
     box-shadow: 
         0 0 0 2px rgba(72, 187, 120, 0.2),
         0 0 8px rgba(72, 187, 120, 0.4);
-    animation: pulse 2s ease-in-out infinite;
+    animation: pulse 3s ease-in-out infinite;
 }
 
 #connection-status.disconnected {
@@ -115,7 +219,7 @@ h1 {
     box-shadow: 
         0 0 0 2px rgba(229, 62, 62, 0.2),
         0 0 8px rgba(229, 62, 62, 0.4);
-    animation: pulse-error 2s ease-in-out infinite;
+    animation: pulse-error 3s ease-in-out infinite;
 }
 
 @keyframes pulse {

@@ -47,6 +47,39 @@ h1 {
     height: 28px;
 }
 
+#connection-status:hover {
+    animation: statusPulse 2s ease-in-out infinite;
+}
+
+@keyframes statusPulse {
+    0% {
+        transform: scale(1);
+        box-shadow: 
+            0 0 15px rgba(72, 187, 120, 0.2),
+            0 0 30px rgba(72, 187, 120, 0.1);
+    }
+    50% {
+        transform: scale(1.05);
+        box-shadow: 
+            0 0 20px rgba(72, 187, 120, 0.3),
+            0 0 40px rgba(72, 187, 120, 0.2);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 
+            0 0 15px rgba(72, 187, 120, 0.2),
+            0 0 30px rgba(72, 187, 120, 0.1);
+    }
+}
+
+#connection-status.connected:hover {
+    border-color: rgba(72, 187, 120, 0.4);
+}
+
+#connection-status.disconnected:hover {
+    border-color: rgba(229, 62, 62, 0.4);
+}
+
 #connection-status::before {
     content: '';
     width: 6px;
@@ -1765,9 +1798,17 @@ button:disabled {
 
 .settings-button:hover {
     background: rgba(45, 55, 72, 0.6);
-    transform: none; /* Remove rotation */
     border-color: rgba(255, 255, 255, 0.2);
     box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+    transform: rotate(45deg);
+}
+
+.settings-button i {
+    transition: transform 0.3s ease;
+}
+
+.settings-button:hover i {
+    transform: rotate(45deg);
 }
 
 .settings-modal {

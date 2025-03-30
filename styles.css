@@ -253,7 +253,7 @@ button:disabled {
         0% 60%,
         20% 30%
     );
-    animation: flicker 1.5s ease-in-out infinite alternate;
+    animation: flicker 2.5s ease-in-out infinite alternate;
     z-index: 2;
 }
 
@@ -261,9 +261,21 @@ button:disabled {
     width: 40px;
     height: 50px;
     background: linear-gradient(to top, #ff8c00, #ff6b00);
-    animation-delay: 0.2s;
+    animation-delay: 0.3s;
     opacity: 0.9;
     filter: drop-shadow(0 0 10px rgba(255, 140, 0, 0.5));
+    clip-path: polygon(
+        50% 0%,
+        85% 30%,
+        100% 60%,
+        95% 80%,
+        85% 90%,
+        50% 100%,
+        15% 90%,
+        5% 80%,
+        0% 60%,
+        15% 30%
+    );
 }
 
 .flame:nth-child(2) {
@@ -273,6 +285,18 @@ button:disabled {
     animation-delay: 0.4s;
     opacity: 0.8;
     filter: drop-shadow(0 0 12px rgba(255, 107, 0, 0.6));
+    clip-path: polygon(
+        50% 0%,
+        82% 30%,
+        100% 60%,
+        92% 80%,
+        82% 90%,
+        50% 100%,
+        18% 90%,
+        8% 80%,
+        0% 60%,
+        18% 30%
+    );
 }
 
 .flame:nth-child(3) {
@@ -282,6 +306,18 @@ button:disabled {
     animation-delay: 0.6s;
     opacity: 0.7;
     filter: drop-shadow(0 0 15px rgba(255, 69, 0, 0.7));
+    clip-path: polygon(
+        50% 0%,
+        80% 30%,
+        100% 60%,
+        90% 80%,
+        80% 90%,
+        50% 100%,
+        20% 90%,
+        10% 80%,
+        0% 60%,
+        20% 30%
+    );
 }
 
 .logs {
@@ -2067,11 +2103,31 @@ button:disabled {
     bottom: -20px;
     left: 50%;
     transform: translateX(-50%);
-    width: 300px;  /* Increased from 200px */
-    height: 300px; /* Increased from 200px */
-    background: radial-gradient(circle, rgba(61, 43, 31, 0.4) 0%, rgba(61, 43, 31, 0.2) 40%, transparent 80%); /* Added middle step in gradient */
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, rgba(61, 43, 31, 0.5) 0%, rgba(61, 43, 31, 0.3) 40%, transparent 80%);
     border-radius: 50%;
     z-index: -1;
+    animation: illuminationFlicker 2.5s ease-in-out infinite alternate;
+}
+
+@keyframes illuminationFlicker {
+    0%, 100% {
+        opacity: 0.5;
+        transform: translateX(-50%) scale(1);
+    }
+    25% {
+        opacity: 0.6;
+        transform: translateX(-50%) scale(1.02);
+    }
+    50% {
+        opacity: 0.4;
+        transform: translateX(-50%) scale(0.98);
+    }
+    75% {
+        opacity: 0.55;
+        transform: translateX(-50%) scale(1.01);
+    }
 }
 
 /* Add target highlight effect */

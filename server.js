@@ -95,6 +95,7 @@ class Channel {
         this.code = code;
         this.participants = new Map(); // Map of WebSocket -> {username, channel, vote}
         this.revealed = false;
+        this.deckType = 'fibonacci'; // Default deck type
         this.currentCardSet = CARD_DECKS.fibonacci;
         this.summary = '';
     }
@@ -151,8 +152,15 @@ class Channel {
         }
     }
 
-    updateCardSet(cards) {
-        this.currentCardSet = cards;
+    updateCardSet(cards, deckType) {
+        // Only update deck type if it's provided and valid
+        if (deckType && (deckType === 'custom' || CARD_DECKS[deckType])) {
+            this.deckType = deckType;
+            this.currentCardSet = deckType === 'custom' ? cards : CARD_DECKS[deckType];
+        } else if (deckType === 'custom') {
+            this.deckType = 'custom';
+            this.currentCardSet = cards;
+        }
         this.broadcastState();
     }
 
@@ -177,7 +185,7 @@ class Channel {
                     data.username,
                     {
                         name: data.username,
-                        vote: data.vote, // Always send the vote
+                        vote: data.vote,
                         isCurrentUser: false
                     }
                 ])
@@ -185,6 +193,7 @@ class Channel {
             revealed: this.revealed,
             roomCode: this.code,
             cardSet: this.currentCardSet,
+            deckType: this.deckType,
             summary: this.summary
         };
 
@@ -293,7 +302,7 @@ wss.on('connection', (ws) => {
                     if (userChannel) {
                         const channel = channels.get(userChannel);
                         if (channel) {
-                            channel.updateCardSet(message.cards);
+                            channel.updateCardSet(message.cards, message.deckType);
                         }
                     }
                     break;

@@ -69,6 +69,9 @@ class PlanningPoker {
         this.settingsButton = document.getElementById('settings-button');
         this.settingsModal = document.getElementById('settings-modal');
 
+        // Populate deck options
+        this.populateDeckOptions();
+
         // Add settings button event listeners
         if (this.settingsButton && this.settingsModal) {
             this.settingsButton.addEventListener('click', () => {
@@ -173,6 +176,33 @@ class PlanningPoker {
 
         // Check for room code in URL
         this.checkUrlForRoomCode();
+    }
+
+    populateDeckOptions() {
+        if (!this.deckTypeSelect) return;
+
+        // Clear existing options except the custom option
+        const customOption = this.deckTypeSelect.querySelector('option[value="custom"]');
+        this.deckTypeSelect.innerHTML = '';
+
+        // Add all preset decks
+        Object.entries(this.presetDecks).forEach(([key, cards]) => {
+            const option = document.createElement('option');
+            option.value = key;
+            
+            // Format the deck name based on the key
+            let deckName = key.split('-')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(' ');
+            
+            // Add the cards to the display text
+            option.textContent = `${deckName} (${cards.join(', ')})`;
+            
+            this.deckTypeSelect.appendChild(option);
+        });
+
+        // Add back the custom option
+        this.deckTypeSelect.appendChild(customOption);
     }
 
     attachCardEventListeners() {
@@ -514,6 +544,23 @@ class PlanningPoker {
                         this.currentCardSet = message.cardSet;
                         this.updateCardSetUI(message.cardSet);
                     }
+                    
+                    // Sync deck type in UI
+                    if (message.deckType && this.deckTypeSelect) {
+                        if (this.deckTypeSelect.value !== message.deckType) {
+                            this.deckTypeSelect.value = message.deckType;
+                            // Show/hide custom input based on deck type
+                            if (message.deckType === 'custom') {
+                                this.customDeckInput.classList.remove('hidden');
+                                if (this.customCardsInput) {
+                                    this.customCardsInput.value = message.cardSet.join(', ');
+                                }
+                            } else {
+                                this.customDeckInput.classList.add('hidden');
+                            }
+                        }
+                    }
+                    
                     if (message.summary !== undefined) {
                         this.updateSummary(message.summary);
                     }
@@ -575,19 +622,12 @@ class PlanningPoker {
             return;
         }
 
-        // Check if the new card set is different from current
-        if (JSON.stringify(values) === JSON.stringify(this.currentCardSet)) {
-            return;
-        }
-
-        this.currentCardSet = values;
-        this.updateCardSetUI(values);
-
         // Send the new card set to the server
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
             this.ws.send(JSON.stringify({
                 type: 'updateCardSet',
-                cards: values
+                cards: values,
+                deckType: 'custom' // Explicitly set as custom for custom card sets
             }));
         }
     }
@@ -1456,6 +1496,7 @@ class PlanningPoker {
         // Show/hide custom input based on selection
         if (selectedDeck === 'custom') {
             this.customDeckInput.classList.remove('hidden');
+            // Don't send any update to server until custom cards are submitted
             return;
         }
         
@@ -1464,14 +1505,12 @@ class PlanningPoker {
         // Update cards with preset deck
         const cards = this.presetDecks[selectedDeck];
         if (cards) {
-            this.currentCardSet = cards;
-            this.updateCardSetUI(cards);
-            
             // Send the new card set to the server
             if (this.ws && this.ws.readyState === WebSocket.OPEN) {
                 this.ws.send(JSON.stringify({
                     type: 'updateCardSet',
-                    cards: cards
+                    cards: cards,
+                    deckType: selectedDeck // This will be used to maintain the deck type
                 }));
             }
         }

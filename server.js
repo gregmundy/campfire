@@ -98,6 +98,7 @@ class Channel {
         this.deckType = 'fibonacci'; // Default deck type
         this.currentCardSet = CARD_DECKS.fibonacci;
         this.summary = '';
+        this.lastDeckChanger = null; // Track who last changed the deck
     }
 
     addParticipant(ws, username, channel) {
@@ -152,14 +153,16 @@ class Channel {
         }
     }
 
-    updateCardSet(cards, deckType) {
+    updateCardSet(cards, deckType, username) {
         // Only update deck type if it's provided and valid
         if (deckType && (deckType === 'custom' || CARD_DECKS[deckType])) {
             this.deckType = deckType;
             this.currentCardSet = deckType === 'custom' ? cards : CARD_DECKS[deckType];
+            this.lastDeckChanger = username; // Store who changed the deck
         } else if (deckType === 'custom') {
             this.deckType = 'custom';
             this.currentCardSet = cards;
+            this.lastDeckChanger = username; // Store who changed the deck
         }
         this.broadcastState();
     }
@@ -194,6 +197,7 @@ class Channel {
             roomCode: this.code,
             cardSet: this.currentCardSet,
             deckType: this.deckType,
+            lastDeckChanger: this.lastDeckChanger, // Include who changed the deck
             summary: this.summary
         };
 
@@ -302,7 +306,7 @@ wss.on('connection', (ws) => {
                     if (userChannel) {
                         const channel = channels.get(userChannel);
                         if (channel) {
-                            channel.updateCardSet(message.cards, message.deckType);
+                            channel.updateCardSet(message.cards, message.deckType, username);
                         }
                     }
                     break;

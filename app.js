@@ -9,6 +9,7 @@ class PlanningPoker {
         this.emojiSelector = null;
         this.emojiOptions = EMOJI_PROJECTILES;
         this.currentCardSet = [];
+        this.currentDeckType = null; // Add tracking for current deck type
         this.previousPlayers = new Set(); // Track previous players for join notifications
         this.isFirstState = true; // Track if this is the first state update
         this.maxPlayers = 50; // Update max players limit to 50
@@ -493,6 +494,14 @@ class PlanningPoker {
                         if (this.revealButton) {
                             this.revealButton.classList.remove('hidden');
                         }
+                        
+                        // Show self join notification on initial state
+                        const currentPlayer = Object.entries(message.players)
+                            .find(([_, player]) => player.isCurrentUser);
+                        if (currentPlayer) {
+                            this.showPlayerJoinNotification(currentPlayer[1].name);
+                        }
+                        
                         this.isFirstState = false;
                     }
                     
@@ -543,13 +552,20 @@ class PlanningPoker {
                     if (message.cardSet && JSON.stringify(message.cardSet) !== JSON.stringify(this.currentCardSet)) {
                         this.currentCardSet = message.cardSet;
                         this.updateCardSetUI(message.cardSet);
+                        
+                        // Only show notification if deck type actually changed and we're not in initial state
+                        // AND the change wasn't triggered by our own join
+                        if (!this.isFirstState && message.deckType && message.deckType !== this.currentDeckType && this.currentDeckType !== null) {
+                            this.showDeckChangeNotification(message.deckType, message.lastDeckChanger);
+                        }
+                        // Update current deck type
+                        this.currentDeckType = message.deckType;
                     }
                     
                     // Sync deck type in UI
                     if (message.deckType && this.deckTypeSelect) {
                         if (this.deckTypeSelect.value !== message.deckType) {
                             this.deckTypeSelect.value = message.deckType;
-                            // Show/hide custom input based on deck type
                             if (message.deckType === 'custom') {
                                 this.customDeckInput.classList.remove('hidden');
                                 if (this.customCardsInput) {
@@ -1682,6 +1698,32 @@ class PlanningPoker {
         // Clear any existing notifications
         const notifications = document.querySelectorAll('.notification');
         notifications.forEach(notification => notification.remove());
+    }
+
+    // Add this method to show deck change notifications
+    showDeckChangeNotification(deckType, changer) {
+        // Format the deck name nicely
+        const deckName = deckType === 'custom' 
+            ? 'Custom'
+            : deckType.split('-')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(' ');
+
+        const notification = document.createElement('div');
+        notification.className = 'deck-change-notification';
+        
+        // Check if the changer is the current user
+        const isCurrentUser = Object.entries(this.players)
+            .find(([_, player]) => player.isCurrentUser && player.name === changer);
+        
+        const changerText = isCurrentUser ? 'You' : changer;
+        notification.textContent = `${changerText} changed the deck to ${deckName}`;
+        document.body.appendChild(notification);
+
+        // Remove the notification after animation completes
+        setTimeout(() => {
+            notification.remove();
+        }, 3000);
     }
 }
 

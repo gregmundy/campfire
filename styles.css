@@ -2701,4 +2701,52 @@ button:disabled {
 .kick-popup-refresh:hover {
     background: #45a049;
 }
+
+.deck-change-notification {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 255, 255, 0.95);
+    color: #333;
+    padding: 12px 20px 12px 45px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    font-size: 14px;
+    z-index: 1000;
+    animation: slideDown 0.3s ease-out, fadeOut 0.3s ease-in 2.7s forwards;
+}
+
+.deck-change-notification::before {
+    content: '🃏';
+    position: absolute;
+    left: 15px;
+    font-size: 20px;
+    animation: bounce 0.5s ease infinite;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translate(-50%, -100%);
+        opacity: 0;
+    }
+    to {
+        transform: translate(-50%, 0);
+        opacity: 1;
+    }
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
   

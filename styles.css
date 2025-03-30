@@ -2043,4 +2043,128 @@ button:disabled {
     border: 1px solid rgba(239, 68, 68, 0.2);
     box-shadow: 0 0 10px rgba(239, 68, 68, 0.1);
     background: rgba(26, 32, 44, 0.98);
+}
+
+.user-counter {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    background: rgba(72, 187, 120, 0.15);
+    border: 1px solid rgba(72, 187, 120, 0.2);
+    border-radius: 4px;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.95);
+    font-weight: 500;
+    letter-spacing: 0.2px;
+    transition: all 0.3s ease;
+}
+
+.user-counter::before {
+    content: '👥';
+    font-size: 10px;
+    opacity: 0.9;
+}
+
+.user-counter:hover {
+    background: rgba(72, 187, 120, 0.25);
+    border-color: rgba(72, 187, 120, 0.3);
+    transform: translateY(-1px);
+    box-shadow: 
+        0 2px 6px rgba(72, 187, 120, 0.15),
+        0 0 0 1px rgba(72, 187, 120, 0.2),
+        inset 0 0 20px rgba(72, 187, 120, 0.1);
+}
+
+.additional-players-table {
+    position: fixed;
+    top: 80px;
+    left: 20px;
+    background: rgba(45, 55, 72, 0.4);
+    border-radius: 12px;
+    padding: 16px;
+    width: 280px;
+    backdrop-filter: blur(8px);
+    box-shadow: 
+        0 2px 4px rgba(0, 0, 0, 0.1),
+        0 0 15px rgba(0, 0, 0, 0.05),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+    z-index: 100;
+}
+
+.additional-players-table h3 {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 14px;
+    font-weight: 500;
+    margin: 0 0 12px 0;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.table-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: calc(100vh - 160px);
+    overflow-y: auto;
+    padding-right: 8px;
+}
+
+.table-grid::-webkit-scrollbar {
+    width: 4px;
+}
+
+.table-grid::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 2px;
+}
+
+.table-grid::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+}
+
+.table-grid::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.player-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.player-row:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateX(2px);
+}
+
+.player-row .name {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 13px;
+    font-weight: 500;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.player-row .status {
+    font-size: 12px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: rgba(72, 187, 120, 0.15);
+    color: rgba(72, 187, 120, 0.9);
+    font-weight: 500;
+    min-width: 60px;
+    text-align: center;
+}
+
+.player-row .status.waiting {
+    background: rgba(237, 137, 54, 0.15);
+    color: rgba(237, 137, 54, 0.9);
 } 

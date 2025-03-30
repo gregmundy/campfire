@@ -691,6 +691,12 @@ class PlanningPoker {
         // Convert players object to Map for easier access
         this.players = new Map(Object.entries(players));
         
+        // Update user counter
+        const userCounter = document.querySelector('.user-counter');
+        if (userCounter) {
+            userCounter.textContent = `${this.players.size} active`;
+        }
+
         const playersList = document.querySelector('.players-circle');
         const campfireContainer = document.querySelector('.campfire-container');
         if (!playersList || !campfireContainer) return;
@@ -698,52 +704,40 @@ class PlanningPoker {
         // Clear existing players
         playersList.innerHTML = '';
 
-        // Get container dimensions
+        // First, find the current user
+        const currentUserEntry = Array.from(this.players.entries())
+            .find(([_, player]) => player.isCurrentUser);
+
+        // Sort remaining players by ID (which correlates to join time)
+        const otherPlayers = Array.from(this.players.entries())
+            .filter(([_, player]) => !player.isCurrentUser)
+            .sort(([idA], [idB]) => idA.localeCompare(idB));
+
+        // Combine players: current user first, then others up to 9 more
+        const circlePlayers = currentUserEntry ? [currentUserEntry] : [];
+        circlePlayers.push(...otherPlayers.slice(0, 9));
+
+        // Calculate positions for circle players
         const containerWidth = campfireContainer.offsetWidth;
         const containerHeight = campfireContainer.offsetHeight;
-
-        // Calculate the safe area for circle
-        const safeAreaTop = 60; // Space for header
-        const safeAreaBottom = 120; // Space for cards
-        
-        // Calculate usable dimensions
+        const safeAreaTop = 60;
+        const safeAreaBottom = 120;
         const usableHeight = containerHeight - safeAreaTop - safeAreaBottom;
         const usableWidth = containerWidth;
         const minDimension = Math.min(usableWidth, usableHeight);
-
-        // Center coordinates (adjust centerY to account for the header and cards space)
         const centerX = containerWidth / 2;
         const centerY = (containerHeight - safeAreaBottom + safeAreaTop) / 2;
-
-        // Sort players to ensure consistent positioning
-        const sortedPlayers = Array.from(this.players.entries())
-            .sort(([idA], [idB]) => idA.localeCompare(idB));
-
-        // Calculate optimal radius for 10 players
-        const cardWidth = 60; // Width of player card
-        const cardHeight = 85; // Height of player card
-        
-        // Increase radius to 45% of the minimum dimension for better spacing
         const radius = minDimension * 0.45;
 
-        // Calculate minimum spacing between players
-        const minSpacing = Math.min(10, sortedPlayers.length) <= 6 ? 140 : 120;
+        // Calculate spacing
+        const minSpacing = circlePlayers.length <= 6 ? 140 : 120;
         const circumference = 2 * Math.PI * radius;
-        const spacing = circumference / Math.min(10, sortedPlayers.length);
+        const spacing = circumference / circlePlayers.length;
+        const finalRadius = spacing < minSpacing ? (minSpacing * circlePlayers.length) / (2 * Math.PI) : radius;
 
-        // Adjust radius if spacing is too small
-        const finalRadius = spacing < minSpacing ? (minSpacing * Math.min(10, sortedPlayers.length)) / (2 * Math.PI) : radius;
-
-        // Create players with their positions
-        sortedPlayers.forEach(([id, player], index) => {
-            if (index >= 10) return; // Skip if more than 10 players
-
-            // Calculate position in circle
-            // Start from the top (12 o'clock position) and go clockwise
-            // Subtract π/2 to start from the top
-            const angle = (-Math.PI / 2) + (index * (2 * Math.PI / Math.min(10, sortedPlayers.length)));
-            
-            // Calculate final position
+        // Create players in the circle
+        circlePlayers.forEach(([id, player], index) => {
+            const angle = (-Math.PI / 2) + (index * (2 * Math.PI / circlePlayers.length));
             const x = centerX + finalRadius * Math.cos(angle);
             const y = centerY + finalRadius * Math.sin(angle);
             
@@ -754,7 +748,6 @@ class PlanningPoker {
             playerWrapper.dataset.playerId = id;
             playerWrapper.dataset.circle = "1";
 
-            // Add click handler for emoji selector
             if (!player.isCurrentUser) {
                 playerWrapper.addEventListener('click', (e) => {
                     e.preventDefault();
@@ -804,6 +797,63 @@ class PlanningPoker {
             playerWrapper.appendChild(nameContainer);
             playersList.appendChild(playerWrapper);
         });
+
+        // Handle additional players in table
+        const tablePlayers = otherPlayers.slice(9);
+        
+        // Remove existing table if present
+        const existingTable = document.querySelector('.additional-players-table');
+        if (existingTable) {
+            existingTable.remove();
+        }
+
+        // Only create table if there are additional players
+        if (tablePlayers.length > 0) {
+            // Create table container
+            const tableContainer = document.createElement('div');
+            tableContainer.className = 'additional-players-table';
+
+            // Add header
+            const header = document.createElement('h3');
+            header.textContent = `Additional Players (${tablePlayers.length})`;
+            tableContainer.appendChild(header);
+
+            // Create grid for player rows
+            const tableGrid = document.createElement('div');
+            tableGrid.className = 'table-grid';
+
+            // Add player rows
+            tablePlayers.forEach(([id, player]) => {
+                const playerRow = document.createElement('div');
+                playerRow.className = 'player-row';
+                playerRow.dataset.playerId = id;
+
+                // Add click handler for emoji selector
+                if (!player.isCurrentUser) {
+                    playerRow.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        this.showEmojiSelector(e, { name: player.name, id: id });
+                    });
+                    playerRow.style.cursor = 'pointer';
+                }
+
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'name';
+                nameSpan.textContent = player.name + (player.isCurrentUser ? ' (You)' : '');
+
+                const statusSpan = document.createElement('span');
+                statusSpan.className = `status ${player.vote ? '' : 'waiting'}`;
+                statusSpan.textContent = player.vote ? (this.revealed ? player.vote : '✓') : 'Waiting';
+
+                playerRow.appendChild(nameSpan);
+                playerRow.appendChild(statusSpan);
+                tableGrid.appendChild(playerRow);
+            });
+
+            tableContainer.appendChild(tableGrid);
+            document.body.appendChild(tableContainer);
+        }
     }
 
     revealVotes() {
@@ -972,10 +1022,8 @@ class PlanningPoker {
         const playerWrapper = event.target.closest('.player-wrapper');
         const emojiOption = event.target.closest('.emoji-option');
         
-        // If click is on emoji selector or its children, do nothing
-        if (selector && (selector.contains(event.target) || emojiOption)) {
-            event.preventDefault();
-            event.stopPropagation();
+        // If click is on an emoji option, let the option's click handler handle it
+        if (emojiOption) {
             return;
         }
         
@@ -990,8 +1038,9 @@ class PlanningPoker {
         }
         
         // If click is outside both selector and player wrapper, close selector
-        if (selector) {
+        if (selector && !selector.contains(event.target)) {
             selector.remove();
+            this.emojiSelector = null; // Reset the selector reference
         }
     }
 
@@ -999,14 +1048,10 @@ class PlanningPoker {
         e.preventDefault();
         e.stopPropagation();
         
-        // If selector exists and is for the same target, keep it open
-        if (this.emojiSelector && this.emojiSelector.dataset.targetPlayer === targetPlayer.name) {
-            return;
-        }
-
-        // Remove existing selector if it's for a different target
+        // Remove existing selector regardless of target
         if (this.emojiSelector) {
             this.emojiSelector.remove();
+            this.emojiSelector = null;
         }
 
         // Create new selector
@@ -1025,7 +1070,6 @@ class PlanningPoker {
             option.className = 'emoji-option';
             option.textContent = emoji;
             
-            // Use onclick instead of addEventListener for more reliable event binding
             option.onclick = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -1041,7 +1085,6 @@ class PlanningPoker {
                         targetId: targetPlayer.id,
                         sourceId: currentUser[0]
                     };
-                    console.log('Sending emoji message:', message); // Add logging
                     this.ws.send(JSON.stringify(message));
                     
                     // Handle the emoji throw locally for immediate feedback
@@ -1050,11 +1093,9 @@ class PlanningPoker {
                         source: currentUser[0],
                         target: targetPlayer.id
                     });
-                } else {
-                    console.error('WebSocket not ready or current user not found'); // Add error logging
                 }
                 
-                // Keep the selector open for multiple throws
+                // Don't remove the selector after throwing, allow multiple throws
                 return false;
             };
             
@@ -1128,6 +1169,16 @@ class PlanningPoker {
             this.roomCodeText.textContent = this.roomCode;
             this.roomCodeDiv.classList.remove('hidden');
             this.roomCodeDiv.classList.add('compact');
+            
+            // Create or update user counter
+            let userCounter = this.roomCodeDiv.querySelector('.user-counter');
+            if (!userCounter) {
+                userCounter = document.createElement('div');
+                userCounter.className = 'user-counter';
+                // Append to roomCodeDiv directly instead of using insertBefore
+                this.roomCodeDiv.appendChild(userCounter);
+            }
+            userCounter.textContent = `${this.players.size} active`;
             
             // Update copy button text
             if (this.copyLinkButton) {

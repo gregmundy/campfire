@@ -1,7 +1,12 @@
-const http = require('http');
-const { WebSocketServer } = require('ws');
-const fs = require('fs');
-const path = require('path');
+import { CARD_DECKS } from './constants.js';
+import http from 'http';
+import { WebSocketServer } from 'ws';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const server = http.createServer((req, res) => {
     // Handle room parameter in URL
@@ -90,7 +95,7 @@ class Channel {
         this.code = code;
         this.participants = new Map(); // Map of WebSocket -> {username, channel, vote}
         this.revealed = false;
-        this.currentCardSet = ['1', '2', '3', '5', '8', '13', '21', '?', '∞'];
+        this.currentCardSet = CARD_DECKS.fibonacci;
         this.summary = '';
     }
 

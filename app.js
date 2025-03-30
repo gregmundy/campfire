@@ -1,3 +1,5 @@
+import { CARD_DECKS, EMOJI_PROJECTILES } from './constants.js';
+
 class PlanningPoker {
     constructor() {
         this.players = new Map();
@@ -5,18 +7,13 @@ class PlanningPoker {
         this.ws = null;
         this.roomCode = null;
         this.emojiSelector = null;
-        this.emojiOptions = ['😊', '😂', '🤣', '😍', '😎', '🤔', '😴', '💩', '🤡', '👻', '🤖', '📓', '❤️', '💸', '🤘'];
+        this.emojiOptions = EMOJI_PROJECTILES;
         this.currentCardSet = [];
         this.previousPlayers = new Set(); // Track previous players for join notifications
         this.isFirstState = true; // Track if this is the first state update
         this.maxPlayers = 50; // Update max players limit to 50
         this.wasKicked = false; // Add flag to track if user was kicked
-        this.presetDecks = {
-            fibonacci: ['1', '2', '3', '5', '8', '13', '21', '?'],
-            'modified-fibonacci': ['0', '½', '1', '2', '3', '5', '8', '13', '20', '40', '100', '?'],
-            't-shirt': ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '?'],
-            powers: ['1', '2', '4', '8', '16', '32', '64', '?']
-        };
+        this.presetDecks = CARD_DECKS;
         this.init();
         this.createForestBackground();
     }

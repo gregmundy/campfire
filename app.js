@@ -459,7 +459,7 @@ class PlanningPoker {
                     
                     // Update the UI to reflect the change
                     console.log('Updating players list after kick');
-                    this.updatePlayersList(Object.fromEntries(this.players));
+                    this.updatePlayersList(Object.fromEntries(this.players), message);
                 } else {
                     console.log('Player not found in local state:', message.playerId);
                 }
@@ -560,7 +560,7 @@ class PlanningPoker {
                     }
                     
                     // Update players list and room code
-                    this.updatePlayersList();
+                    this.updatePlayersList(message.players, message);
                     this.roomCode = message.roomCode;
                     
                     // Update voting state visibility
@@ -948,7 +948,7 @@ class PlanningPoker {
         }, 3000);
     }
 
-    updatePlayersList(players) {
+    updatePlayersList(players, message) {
         // Update the players Map with the provided players
         if (players) {
             this.players = new Map(Object.entries(players));
@@ -1159,9 +1159,9 @@ class PlanningPoker {
         const hud = document.createElement('div');
         hud.className = 'game-hud';
 
-        // Calculate voting progress
+        // Calculate voting progress using server's vote count
         const totalPlayers = this.players.size;
-        const votedPlayers = Array.from(this.players.values()).filter(player => player.vote !== null).length;
+        const votedPlayers = message?.voteCount || Array.from(this.players.values()).filter(player => player.vote !== null).length;
         const progress = totalPlayers > 0 ? (votedPlayers / totalPlayers) * 100 : 0;
 
         // Create circular progress container
@@ -1711,7 +1711,7 @@ class PlanningPoker {
         this.revealButton.textContent = revealed ? 'Start New Round' : 'Reveal Votes';
         
         // Update all player cards to show/hide votes
-        this.updatePlayersList(Object.fromEntries(this.players));
+        this.updatePlayersList(Object.fromEntries(this.players), null);
     }
 
     showErrorNotification(message) {

@@ -99,6 +99,7 @@ class Channel {
         this.currentCardSet = CARD_DECKS.fibonacci;
         this.summary = '';
         this.lastDeckChanger = null; // Track who last changed the deck
+        this.voteCount = 0; // Track total number of votes
     }
 
     addParticipant(ws, username, channel) {
@@ -110,10 +111,19 @@ class Channel {
             return;
         }
 
+        // Check if username already exists and preserve their vote
+        let existingVote = null;
+        for (const [_, data] of this.participants.entries()) {
+            if (data.username === username) {
+                existingVote = data.vote;
+                break;
+            }
+        }
+
         this.participants.set(ws, {
             username,
             channel,
-            vote: null
+            vote: existingVote
         });
 
         // Broadcast to all participants in the same channel
@@ -145,6 +155,12 @@ class Channel {
     updateVote(username, vote) {
         for (const [ws, data] of this.participants.entries()) {
             if (data.username === username) {
+                // Update vote count
+                if (data.vote === null && vote !== null) {
+                    this.voteCount++;
+                } else if (data.vote !== null && vote === null) {
+                    this.voteCount--;
+                }
                 data.vote = vote;
                 // Broadcast the vote update immediately
                 this.broadcastState();
@@ -163,6 +179,7 @@ class Channel {
             this.participants.forEach(participant => {
                 participant.vote = null;
             });
+            this.voteCount = 0; // Reset vote count
         } else if (deckType === 'custom') {
             this.deckType = 'custom';
             this.currentCardSet = cards;
@@ -171,6 +188,7 @@ class Channel {
             this.participants.forEach(participant => {
                 participant.vote = null;
             });
+            this.voteCount = 0; // Reset vote count
         }
         this.broadcastState();
     }
@@ -185,6 +203,7 @@ class Channel {
         for (const participant of this.participants.values()) {
             participant.vote = null;
         }
+        this.voteCount = 0; // Reset vote count
         this.broadcastState();
     }
 
@@ -205,8 +224,9 @@ class Channel {
             roomCode: this.code,
             cardSet: this.currentCardSet,
             deckType: this.deckType,
-            lastDeckChanger: this.lastDeckChanger, // Include who changed the deck
-            summary: this.summary
+            lastDeckChanger: this.lastDeckChanger,
+            summary: this.summary,
+            voteCount: this.voteCount // Include vote count in state
         };
 
         for (const [ws, data] of this.participants.entries()) {

@@ -949,15 +949,15 @@ class PlanningPoker {
     }
 
     updatePlayersList(players) {
-        // If players parameter is provided, update the Map
+        // Update the players Map with the provided players
         if (players) {
             this.players = new Map(Object.entries(players));
         }
-        
+
         // Update user counter
         const userCounter = document.querySelector('.user-counter');
         if (userCounter) {
-            userCounter.textContent = `${this.players.size} active`;
+            userCounter.textContent = `${this.players.size} users`;
         }
 
         const playersList = document.querySelector('.players-circle');
@@ -1069,7 +1069,7 @@ class PlanningPoker {
                 if (nameElement && nameElement.textContent !== id) {
                     nameElement.textContent = id;
                 }
-                
+
                 // Update vote indicator without recreating it
                 const voteIndicator = playerWrapper.querySelector('.vote-indicator');
                 if (voteIndicator) {
@@ -1097,18 +1097,22 @@ class PlanningPoker {
         // Handle additional players in table
         const tablePlayers = otherPlayers.slice(9);
         
-        // Remove existing table if present
-        const existingTable = document.querySelector('.additional-players-table');
-        if (existingTable) {
-            existingTable.remove();
+        // Remove existing side panel if present
+        const existingSidePanel = document.querySelector('.side-panel');
+        if (existingSidePanel) {
+            existingSidePanel.remove();
         }
+
+        // Create side panel container
+        const sidePanel = document.createElement('div');
+        sidePanel.className = 'side-panel';
 
         // Only create table if there are additional players
         if (tablePlayers.length > 0) {
             // Create table container
             const tableContainer = document.createElement('div');
             tableContainer.className = 'additional-players-table';
-
+            
             // Add header
             const header = document.createElement('h3');
             header.textContent = `Additional Players (${tablePlayers.length})`;
@@ -1148,8 +1152,129 @@ class PlanningPoker {
             });
 
             tableContainer.appendChild(tableGrid);
-            document.body.appendChild(tableContainer);
+            sidePanel.appendChild(tableContainer);
         }
+
+        // Create HUD container
+        const hud = document.createElement('div');
+        hud.className = 'game-hud';
+
+        // Calculate voting progress
+        const totalPlayers = this.players.size;
+        const votedPlayers = Array.from(this.players.values()).filter(player => player.vote !== null).length;
+        const progress = totalPlayers > 0 ? (votedPlayers / totalPlayers) * 100 : 0;
+
+        // Create circular progress container
+        const progressContainer = document.createElement('div');
+        progressContainer.className = 'hud-progress-container';
+
+        // Create SVG for circular progress
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('viewBox', '0 0 36 36');
+        svg.classList.add('hud-progress-circle');
+
+        // Background circle
+        const backgroundCircle = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        backgroundCircle.setAttribute('d', 'M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831');
+        backgroundCircle.setAttribute('fill', 'none');
+        backgroundCircle.setAttribute('stroke', 'rgba(255, 255, 255, 0.1)');
+        backgroundCircle.setAttribute('stroke-width', '3');
+
+        // Progress circle
+        const progressCircle = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        progressCircle.setAttribute('d', 'M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831');
+        progressCircle.setAttribute('fill', 'none');
+        progressCircle.setAttribute('stroke', '#4CAF50');
+        progressCircle.setAttribute('stroke-width', '3');
+        progressCircle.setAttribute('stroke-dasharray', `${progress}, 100`);
+
+        // Add circles to SVG
+        svg.appendChild(backgroundCircle);
+        svg.appendChild(progressCircle);
+
+        // Create progress text container
+        const progressText = document.createElement('div');
+        progressText.className = 'hud-progress-text';
+        progressText.innerHTML = `
+            <span class="progress-number">${votedPlayers}/${totalPlayers}</span>
+            <span class="progress-label">Votes</span>
+        `;
+
+        // Add elements to progress container
+        progressContainer.appendChild(svg);
+        progressContainer.appendChild(progressText);
+
+        // Add progress container to HUD
+        hud.appendChild(progressContainer);
+
+        // Add HUD to side panel
+        sidePanel.appendChild(hud);
+
+        // Add side panel to document
+        document.body.appendChild(sidePanel);
+    }
+
+    updateHUD() {
+        // Remove existing HUD if present
+        const existingHUD = document.querySelector('.game-hud');
+        if (existingHUD) {
+            existingHUD.remove();
+        }
+
+        // Create new HUD container
+        const hud = document.createElement('div');
+        hud.className = 'game-hud';
+
+        // Calculate voting progress
+        const totalPlayers = this.players.size;
+        const votedPlayers = Array.from(this.players.values()).filter(player => player.vote !== null).length;
+        const progress = totalPlayers > 0 ? (votedPlayers / totalPlayers) * 100 : 0;
+
+        // Create circular progress container
+        const progressContainer = document.createElement('div');
+        progressContainer.className = 'hud-progress-container';
+
+        // Create SVG for circular progress
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('viewBox', '0 0 36 36');
+        svg.classList.add('hud-progress-circle');
+
+        // Background circle
+        const backgroundCircle = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        backgroundCircle.setAttribute('d', 'M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831');
+        backgroundCircle.setAttribute('fill', 'none');
+        backgroundCircle.setAttribute('stroke', 'rgba(255, 255, 255, 0.1)');
+        backgroundCircle.setAttribute('stroke-width', '3');
+
+        // Progress circle
+        const progressCircle = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        progressCircle.setAttribute('d', 'M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831');
+        progressCircle.setAttribute('fill', 'none');
+        progressCircle.setAttribute('stroke', '#4CAF50');
+        progressCircle.setAttribute('stroke-width', '3');
+        progressCircle.setAttribute('stroke-dasharray', `${progress}, 100`);
+
+        // Add circles to SVG
+        svg.appendChild(backgroundCircle);
+        svg.appendChild(progressCircle);
+
+        // Create progress text container
+        const progressText = document.createElement('div');
+        progressText.className = 'hud-progress-text';
+        progressText.innerHTML = `
+            <span class="progress-number">${votedPlayers}/${totalPlayers}</span>
+            <span class="progress-label">Votes</span>
+        `;
+
+        // Add elements to progress container
+        progressContainer.appendChild(svg);
+        progressContainer.appendChild(progressText);
+
+        // Add progress container to HUD
+        hud.appendChild(progressContainer);
+
+        // Add HUD to document
+        document.body.appendChild(hud);
     }
 
     revealVotes() {

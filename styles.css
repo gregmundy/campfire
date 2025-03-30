@@ -2772,4 +2772,219 @@ button:disabled {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-5px); }
 }
+
+/* Game HUD Styles */
+.game-hud {
+    position: fixed;
+    top: 280px; /* Position below the additional players table */
+    left: 20px; /* Align with the additional players table */
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    padding: 15px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    transition: all 0.3s ease;
+    width: 280px; /* Match the width of the additional players table */
+}
+
+.hud-progress-container {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    width: 100%;
+}
+
+.hud-progress-circle {
+    width: 36px;
+    height: 36px;
+    transform: rotate(-90deg);
+}
+
+.hud-progress-circle path {
+    transition: stroke-dasharray 0.3s ease;
+}
+
+.hud-progress-text {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    color: white;
+    flex: 1;
+}
+
+.progress-number {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #4CAF50;
+}
+
+.progress-label {
+    font-size: 0.8em;
+    opacity: 0.8;
+}
+
+/* Remove the margin-bottom from additional players table since we're using fixed positioning */
+.additional-players-table {
+    margin-bottom: 0;
+}
+
+/* Side panel container for additional players and HUD */
+.side-panel {
+    position: fixed;
+    top: 80px;
+    left: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    z-index: 100;
+}
+
+.additional-players-table {
+    position: relative; /* Changed from fixed */
+    background: rgba(45, 55, 72, 0.4);
+    border-radius: 12px;
+    padding: 16px;
+    width: 280px;
+    backdrop-filter: blur(8px);
+    box-shadow: 
+        0 2px 4px rgba(0, 0, 0, 0.1),
+        0 0 15px rgba(0, 0, 0, 0.05),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+/* Game HUD Styles */
+.game-hud {
+    position: relative; /* Changed from fixed */
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    padding: 15px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    width: 280px;
+}
+
+/* Side panel container */
+.side-panel {
+    position: fixed;
+    top: 80px;
+    left: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    z-index: 100;
+}
+
+/* Additional Players Table */
+.additional-players-table {
+    background: rgba(45, 55, 72, 0.4);
+    border-radius: 12px;
+    padding: 16px;
+    width: 280px;
+    backdrop-filter: blur(8px);
+    box-shadow: 
+        0 2px 4px rgba(0, 0, 0, 0.1),
+        0 0 15px rgba(0, 0, 0, 0.05),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.additional-players-table h3 {
+    margin: 0 0 12px 0;
+    color: #fff;
+    font-size: 1.1em;
+    font-weight: 500;
+}
+
+.table-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.player-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.player-row:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateX(4px);
+}
+
+.player-row .name {
+    color: #fff;
+    font-size: 0.9em;
+}
+
+.player-row .status {
+    color: #4CAF50;
+    font-size: 0.9em;
+}
+
+.player-row .status.waiting {
+    color: #ffd700;
+}
+
+/* Game HUD */
+.game-hud {
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    padding: 15px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    width: 280px;
+}
+
+.hud-progress-container {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    width: 100%;
+}
+
+.hud-progress-circle {
+    width: 36px;
+    height: 36px;
+    transform: rotate(-90deg);
+}
+
+.hud-progress-circle path {
+    transition: stroke-dasharray 0.3s ease;
+}
+
+.hud-progress-text {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    color: white;
+    flex: 1;
+}
+
+.progress-number {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #4CAF50;
+}
+
+.progress-label {
+    font-size: 0.8em;
+    opacity: 0.8;
+}
   

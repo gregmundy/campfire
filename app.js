@@ -381,7 +381,13 @@ class PlanningPoker {
     handleMessage(event) {
         try {
             const message = JSON.parse(event.data);
-            console.log('Received message:', message);
+            console.log('=== handleMessage called ===');
+            console.log('Message type:', message.type);
+            console.log('Current state:', {
+                revealed: this.revealed,
+                currentUserVote: Array.from(this.players.entries())
+                    .find(([_, player]) => player.isCurrentUser)?.[1]?.vote
+            });
 
             // Handle player kick first, before any other state updates
             if (message.type === 'playerKicked') {
@@ -467,11 +473,13 @@ class PlanningPoker {
                     this.channelInput.value = message.code;
                     break;
                 case 'channel_state':
-                    console.log('=== CHANNEL STATE UPDATE ===');
+                    console.log('=== Processing channel_state ===');
                     console.log('Channel state details:', {
                         players: Object.keys(message.players),
-                        currentPlayers: Array.from(this.players.keys())
+                        currentPlayers: Array.from(this.players.keys()),
+                        revealed: message.revealed
                     });
+                    
                     // Check player limit before updating state
                     if (Object.keys(message.players).length > this.maxPlayers) {
                         this.showErrorNotification(`Room is full (max ${this.maxPlayers} players)`);
@@ -505,49 +513,58 @@ class PlanningPoker {
                         this.isFirstState = false;
                     }
                     
-                    // Update selected card state based on your vote
-                    if (message.players) {
-                        const currentPlayer = Object.entries(message.players)
-                            .find(([_, player]) => player.isCurrentUser);
-                        
-                        if (currentPlayer && this.cardsSection) {
-                            // Clear all selected states first
-                            this.cardsSection.querySelectorAll('.card').forEach(c => {
-                                c.classList.remove('selected');
-                                const existingCheckmark = c.querySelector('.checkmark');
-                                if (existingCheckmark) {
-                                    existingCheckmark.remove();
-                                }
+                    // Store current user's vote before updating state
+                    const currentUserVote = this.currentUserVote;
+                    console.log('Current vote before state update:', currentUserVote);
+                    
+                    // Update only changed or new players
+                    Object.entries(message.players).forEach(([username, player]) => {
+                        const existingPlayer = this.players.get(username);
+                        if (!existingPlayer || existingPlayer.vote !== player.vote || existingPlayer.isCurrentUser !== player.isCurrentUser) {
+                            console.log('Updating player state:', {
+                                username,
+                                oldVote: existingPlayer?.vote,
+                                newVote: player.vote,
+                                isCurrentUser: player.isCurrentUser
                             });
-                            
-                            // If the player has voted, find and select their card
-                            if (currentPlayer[1].vote) {
-                                const votedCard = Array.from(this.cardsSection.querySelectorAll('.card'))
-                                    .find(card => card.dataset.value === currentPlayer[1].vote);
-                                
-                                if (votedCard) {
-                                    votedCard.classList.add('selected');
-                                    const checkmark = document.createElement('div');
-                                    checkmark.className = 'checkmark';
-                                    checkmark.innerHTML = '✓';
-                                    votedCard.appendChild(checkmark);
-                                }
+                            this.players.set(username, {
+                                vote: player.vote,
+                                isCurrentUser: player.isCurrentUser
+                            });
+                            // Update the player card with their vote state
+                            this.updatePlayerCard(username, player.vote);
+                        }
+                    });
+                    
+                    // Remove players that are no longer in the room
+                    Array.from(this.players.keys()).forEach(username => {
+                        if (!message.players[username]) {
+                            console.log('Removing player that left:', username);
+                            this.players.delete(username);
+                            const playerWrapper = document.querySelector(`.player-wrapper[data-player-id="${username}"]`);
+                            if (playerWrapper) {
+                                playerWrapper.remove();
+                            }
+                            const playerRow = document.querySelector(`.player-row[data-player-id="${username}"]`);
+                            if (playerRow) {
+                                playerRow.remove();
                             }
                         }
+                    });
+                    
+                    // Update current user's vote if it exists
+                    if (currentUserVote) {
+                        this.currentUserVote = currentUserVote;
+                        // Update the UI to show the current user's vote
+                        this.updatePlayerCard(this.username, currentUserVote);
                     }
                     
-                    console.log('Updating players list with channel state');
-                    this.updatePlayersList(message.players);
-                    this.updateRoomCode(message.roomCode);
+                    // Update players list and room code
+                    this.updatePlayersList();
+                    this.roomCode = message.roomCode;
+                    
+                    // Update voting state visibility
                     this.updateVotingState(message.revealed);
-                    
-                    // Only show results if votes are revealed and this isn't a reset
-                    if (message.revealed && message.players && this.revealButton.textContent !== 'Start New Round') {
-                        const votes = Object.entries(message.players)
-                            .map(([name, player]) => [name, player.vote])
-                            .filter(([_, vote]) => vote !== null && vote !== undefined);
-                        this.showResults(votes);
-                    }
                     
                     if (message.cardSet && JSON.stringify(message.cardSet) !== JSON.stringify(this.currentCardSet)) {
                         this.currentCardSet = message.cardSet;
@@ -621,6 +638,11 @@ class PlanningPoker {
             this.cardsSection.appendChild(card);
         });
 
+        // Clear votes when changing card set
+        this.players.forEach(player => {
+            player.vote = null;
+        });
+
         // Attach event listeners to new cards
         this.attachCardEventListeners();
     }
@@ -670,6 +692,7 @@ class PlanningPoker {
 
     handleReset(message) {
         this.revealed = false;
+        // Only clear votes when explicitly resetting
         this.players.forEach(player => {
             player.vote = null;
         });
@@ -775,6 +798,14 @@ class PlanningPoker {
     }
 
     selectCard(card) {
+        console.log('=== selectCard called ===');
+        console.log('Current state:', {
+            revealed: this.revealed,
+            wsState: this.ws?.readyState,
+            currentVote: Array.from(this.players.entries())
+                .find(([_, player]) => player.isCurrentUser)?.[1]?.vote
+        });
+
         if (this.revealed) {
             this.showErrorNotification("Can't vote while votes are revealed");
             return;
@@ -785,6 +816,9 @@ class PlanningPoker {
             this.connectWebSocket();
             return;
         }
+
+        // Check if this card is already selected
+        const isCurrentlySelected = card.classList.contains('selected');
         
         // Remove selected class from all cards
         if (this.cardsSection) {
@@ -798,6 +832,39 @@ class PlanningPoker {
             });
         }
         
+        // If the card was already selected, we're unselecting it
+        if (isCurrentlySelected) {
+            console.log('Unselecting card');
+            // Send null vote to server to clear the vote
+            try {
+                // Update the player's own card in the circle immediately
+                const currentUser = Array.from(this.players.entries())
+                    .find(([_, player]) => player.isCurrentUser);
+                
+                if (currentUser) {
+                    console.log('Updating local state for current user:', {
+                        userId: currentUser[0],
+                        oldVote: currentUser[1].vote,
+                        newVote: null
+                    });
+                    // Update the player's vote in the local state
+                    currentUser[1].vote = null;
+                    // Update the UI
+                    this.updatePlayerCard(currentUser[0], null);
+                }
+                
+                // Send null vote to server
+                this.ws.send(JSON.stringify({
+                    type: 'vote',
+                    vote: null
+                }));
+            } catch (error) {
+                console.error('Error clearing vote:', error);
+                this.showErrorNotification('Failed to clear vote. Please try again.');
+            }
+            return;
+        }
+        
         // Add selected class and checkmark to clicked card
         card.classList.add('selected');
         
@@ -809,21 +876,32 @@ class PlanningPoker {
         
         // Send vote to server
         try {
-            this.ws.send(JSON.stringify({
-                type: 'vote',
-                vote: card.dataset.value
-            }));
+            const voteValue = card.dataset.value;
+            console.log('Sending vote to server:', voteValue);
             
             // Update the player's own card in the circle immediately
-            const playerCard = Array.from(document.querySelectorAll('.player-card'))
-                .find(card => card.textContent.includes('(You)'));
-            if (playerCard) {
-                const voteSpan = playerCard.querySelector('span:last-child');
-                if (voteSpan) {
-                    voteSpan.textContent = '✓';
-                    voteSpan.classList.add('has-voted');
-                }
+            const currentUser = Array.from(this.players.entries())
+                .find(([_, player]) => player.isCurrentUser);
+            
+            if (currentUser) {
+                console.log('Updating local state for current user:', {
+                    userId: currentUser[0],
+                    oldVote: currentUser[1].vote,
+                    newVote: voteValue
+                });
+                // Update the player's vote in the local state
+                currentUser[1].vote = voteValue;
+                // Update the UI
+                this.updatePlayerCard(currentUser[0], voteValue);
+            } else {
+                console.log('No current user found in players map');
             }
+            
+            // Send vote to server after updating local state
+            this.ws.send(JSON.stringify({
+                type: 'vote',
+                vote: voteValue
+            }));
         } catch (error) {
             console.error('Error sending vote:', error);
             this.showErrorNotification('Failed to send vote. Please try again.');
@@ -871,8 +949,10 @@ class PlanningPoker {
     }
 
     updatePlayersList(players) {
-        // Convert players object to Map for easier access
-        this.players = new Map(Object.entries(players));
+        // If players parameter is provided, update the Map
+        if (players) {
+            this.players = new Map(Object.entries(players));
+        }
         
         // Update user counter
         const userCounter = document.querySelector('.user-counter');
@@ -883,9 +963,6 @@ class PlanningPoker {
         const playersList = document.querySelector('.players-circle');
         const campfireContainer = document.querySelector('.campfire-container');
         if (!playersList || !campfireContainer) return;
-
-        // Clear existing players
-        playersList.innerHTML = '';
 
         // First, find the current user
         const currentUserEntry = Array.from(this.players.entries())
@@ -903,86 +980,118 @@ class PlanningPoker {
         // Calculate positions for circle players
         const containerWidth = campfireContainer.offsetWidth;
         const containerHeight = campfireContainer.offsetHeight;
-        const safeAreaTop = 100; // Increased from 80 to 100
-        const safeAreaBottom = 160; // Increased from 140 to 160
+        const safeAreaTop = 100;
+        const safeAreaBottom = 160;
         const usableHeight = containerHeight - safeAreaTop - safeAreaBottom;
         const usableWidth = containerWidth;
         const minDimension = Math.min(usableWidth, usableHeight);
         const centerX = containerWidth / 2;
         const centerY = (containerHeight - safeAreaBottom + safeAreaTop) / 2;
-        
-        // Increase base radius to make circle wider
-        const radius = minDimension * 0.52; // Increased from 0.48 to 0.52
-
-        // Calculate spacing with increased minimum values
-        const minSpacing = circlePlayers.length <= 6 ? 180 : 160; // Increased from 160/140 to 180/160
+        const radius = minDimension * 0.52;
+        const minSpacing = circlePlayers.length <= 6 ? 180 : 160;
         const circumference = 2 * Math.PI * radius;
         const spacing = circumference / circlePlayers.length;
         const finalRadius = spacing < minSpacing ? (minSpacing * circlePlayers.length) / (2 * Math.PI) : radius;
 
-        // Create players in the circle
+        // Create or update players in the circle
         circlePlayers.forEach(([id, player], index) => {
-            // Start angle from top (-π/2) and distribute players evenly
             const angle = (-Math.PI / 2) + (index * (2 * Math.PI / circlePlayers.length));
             const x = centerX + finalRadius * Math.cos(angle);
             const y = centerY + finalRadius * Math.sin(angle);
             
-            const playerWrapper = document.createElement('div');
-            playerWrapper.className = 'player-wrapper';
-            playerWrapper.style.left = `${x}px`;
-            playerWrapper.style.top = `${y}px`;
-            playerWrapper.dataset.playerId = id;
-            playerWrapper.dataset.circle = "1";
-
-            if (!player.isCurrentUser) {
-                playerWrapper.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    this.showEmojiSelector(e, { name: player.name, id: id });
-                });
-                playerWrapper.style.cursor = 'pointer';
-            }
-
-            const playerCard = document.createElement('div');
-            playerCard.className = 'player-card';
-            if (player.isCurrentUser) {
-                playerCard.classList.add('current-user');
-                playerWrapper.style.cursor = 'default';
-            }
+            // Check if player wrapper already exists
+            let playerWrapper = document.querySelector(`.player-wrapper[data-player-id="${id}"]`);
             
-            const voteIndicator = document.createElement('div');
-            voteIndicator.className = 'vote-indicator';
-            if (player.vote !== null && player.vote !== undefined) {
-                voteIndicator.classList.add('has-voted');
-                if (this.revealed) {
-                    voteIndicator.classList.add('revealed');
-                    voteIndicator.textContent = player.vote;
+            if (!playerWrapper) {
+                // Create new wrapper if it doesn't exist
+                playerWrapper = document.createElement('div');
+                playerWrapper.className = 'player-wrapper';
+                playerWrapper.dataset.playerId = id;
+                playerWrapper.dataset.circle = "1";
+                playerWrapper.style.left = `${x}px`;
+                playerWrapper.style.top = `${y}px`;
+
+                if (!player.isCurrentUser) {
+                    playerWrapper.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        this.showEmojiSelector(e, { name: id, id: id });
+                    });
+                    playerWrapper.style.cursor = 'pointer';
+                }
+
+                const playerCard = document.createElement('div');
+                playerCard.className = 'player-card';
+                if (player.isCurrentUser) {
+                    playerCard.classList.add('current-user');
+                    playerWrapper.style.cursor = 'default';
+                }
+                
+                const voteIndicator = document.createElement('div');
+                voteIndicator.className = 'vote-indicator not-voted';
+                // Set initial vote state
+                if (!this.revealed) {
+                    voteIndicator.textContent = player.vote ? '✓' : '🤔';
+                    voteIndicator.className = player.vote ? 'vote-indicator has-voted' : 'vote-indicator not-voted';
                 } else {
-                    voteIndicator.textContent = '✓';
+                    voteIndicator.textContent = player.vote || '🤔';
+                    voteIndicator.className = player.vote ? 'vote-indicator revealed' : 'vote-indicator not-voted';
+                }
+
+                const nameContainer = document.createElement('div');
+                nameContainer.className = 'name-container';
+
+                const playerName = document.createElement('span');
+                playerName.className = 'player-name';
+                playerName.textContent = id;
+                playerName.setAttribute('data-name', id);
+
+                const youIndicator = document.createElement('span');
+                youIndicator.className = 'you-indicator';
+                youIndicator.textContent = 'You';
+
+                nameContainer.appendChild(playerName);
+                if (player.isCurrentUser) {
+                    nameContainer.appendChild(youIndicator);
+                }
+
+                playerCard.appendChild(voteIndicator);
+                playerWrapper.appendChild(playerCard);
+                playerWrapper.appendChild(nameContainer);
+                playersList.appendChild(playerWrapper);
+            } else {
+                // Update existing wrapper position
+                playerWrapper.style.left = `${x}px`;
+                playerWrapper.style.top = `${y}px`;
+                
+                // Update player name if it changed
+                const nameElement = playerWrapper.querySelector('.player-name');
+                if (nameElement && nameElement.textContent !== id) {
+                    nameElement.textContent = id;
+                }
+                
+                // Update vote indicator without recreating it
+                const voteIndicator = playerWrapper.querySelector('.vote-indicator');
+                if (voteIndicator) {
+                    if (!this.revealed) {
+                        if (player.vote === null) {
+                            voteIndicator.textContent = '🤔';
+                            voteIndicator.className = 'vote-indicator not-voted';
+                        } else {
+                            voteIndicator.textContent = '✓';
+                            voteIndicator.className = 'vote-indicator has-voted';
+                        }
+                    } else {
+                        if (player.vote === null) {
+                            voteIndicator.textContent = '🤔';
+                            voteIndicator.className = 'vote-indicator not-voted';
+                        } else {
+                            voteIndicator.textContent = player.vote;
+                            voteIndicator.className = 'vote-indicator revealed';
+                        }
+                    }
                 }
             }
-
-            const nameContainer = document.createElement('div');
-            nameContainer.className = 'name-container';
-
-            const playerName = document.createElement('span');
-            playerName.className = 'player-name';
-            playerName.textContent = player.name;
-            playerName.setAttribute('data-name', player.name);
-
-            const youIndicator = document.createElement('span');
-            youIndicator.className = 'you-indicator';
-            youIndicator.textContent = 'you';
-
-            nameContainer.appendChild(playerName);
-            if (player.isCurrentUser) {
-                nameContainer.appendChild(youIndicator);
-            }
-
-            playerCard.appendChild(voteIndicator);
-            playerWrapper.appendChild(playerCard);
-            playerWrapper.appendChild(nameContainer);
-            playersList.appendChild(playerWrapper);
         });
 
         // Handle additional players in table
@@ -1020,14 +1129,14 @@ class PlanningPoker {
                     playerRow.addEventListener('click', (e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        this.showEmojiSelector(e, { name: player.name, id: id });
+                        this.showEmojiSelector(e, { name: id, id: id });
                     });
                     playerRow.style.cursor = 'pointer';
                 }
 
                 const nameSpan = document.createElement('span');
                 nameSpan.className = 'name';
-                nameSpan.textContent = player.name + (player.isCurrentUser ? ' (You)' : '');
+                nameSpan.textContent = id + (player.isCurrentUser ? ' (You)' : '');
 
                 const statusSpan = document.createElement('span');
                 statusSpan.className = `status ${player.vote ? '' : 'waiting'}`;
@@ -1457,6 +1566,11 @@ class PlanningPoker {
     }
 
     updateVotingState(revealed) {
+        // Only update if the state has actually changed
+        if (revealed === this.revealed) {
+            return;
+        }
+        
         this.revealed = revealed;
         
         if (!revealed) {
@@ -1465,11 +1579,8 @@ class PlanningPoker {
             if (results) {
                 results.classList.add('hidden');
             }
-            // Clear all votes and selected cards
+            // Only clear selected cards, don't clear votes
             this.cards.forEach(card => card.classList.remove('selected'));
-            this.players.forEach(player => {
-                player.vote = null;
-            });
         }
         
         this.revealButton.textContent = revealed ? 'Start New Round' : 'Reveal Votes';
@@ -1724,6 +1835,109 @@ class PlanningPoker {
         setTimeout(() => {
             notification.remove();
         }, 3000);
+    }
+
+    createPlayerCard(player) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'player-wrapper';
+        wrapper.setAttribute('data-circle', '1');
+        wrapper.setAttribute('data-player-id', player.id);
+
+        const card = document.createElement('div');
+        card.className = 'player-card';
+        if (player.id === this.socket.id) {
+            card.classList.add('current-user');
+        }
+
+        const voteIndicator = document.createElement('div');
+        voteIndicator.className = 'vote-indicator not-voted';
+        voteIndicator.textContent = '🤔';
+
+        const nameContainer = document.createElement('div');
+        nameContainer.className = 'name-container';
+
+        const name = document.createElement('span');
+        name.className = 'player-name';
+        name.textContent = player.name;
+        name.setAttribute('data-name', player.name);
+
+        const youIndicator = document.createElement('span');
+        youIndicator.className = 'you-indicator';
+        youIndicator.textContent = 'You';
+
+        nameContainer.appendChild(name);
+        if (player.id === this.socket.id) {
+            nameContainer.appendChild(youIndicator);
+        }
+
+        card.appendChild(voteIndicator);
+        wrapper.appendChild(card);
+        wrapper.appendChild(nameContainer);
+
+        return wrapper;
+    }
+
+    updatePlayerCard(playerId, vote) {
+        console.log('=== updatePlayerCard called ===');
+        console.log('Parameters:', { playerId, vote });
+        console.log('Current state:', {
+            revealed: this.revealed,
+            currentUserVote: Array.from(this.players.entries())
+                .find(([_, player]) => player.isCurrentUser)?.[1]?.vote
+        });
+
+        const wrapper = document.querySelector(`.player-wrapper[data-player-id="${playerId}"]`);
+        if (!wrapper) {
+            console.log('No wrapper found for player:', playerId);
+            return;
+        }
+
+        const voteIndicator = wrapper.querySelector('.vote-indicator');
+        if (!voteIndicator) {
+            console.log('No vote indicator found in wrapper');
+            return;
+        }
+
+        // If votes are not revealed yet
+        if (!this.revealed) {
+            if (vote === null) {
+                console.log('Setting not voted state (thinking face)');
+                voteIndicator.textContent = '🤔';
+                voteIndicator.className = 'vote-indicator not-voted';
+            } else {
+                console.log('Setting voted state (checkmark)');
+                voteIndicator.textContent = '✓';
+                voteIndicator.className = 'vote-indicator has-voted';
+            }
+        } else {
+            console.log('Votes are revealed, showing actual vote');
+            if (vote === null) {
+                voteIndicator.textContent = '🤔';
+                voteIndicator.className = 'vote-indicator not-voted';
+            } else {
+                voteIndicator.textContent = vote;
+                voteIndicator.className = 'vote-indicator revealed';
+            }
+        }
+    }
+
+    updatePlayerTableRow(playerId, vote) {
+        const row = document.querySelector(`.player-row[data-player-id="${playerId}"]`);
+        if (!row) return;
+
+        const status = row.querySelector('.status');
+        if (!status) return;
+
+        if (vote === null) {
+            status.textContent = '🤔';
+            status.className = 'status not-voted';
+        } else if (vote === '?') {
+            status.textContent = 'Voted';
+            status.className = 'status';
+        } else {
+            status.textContent = 'Voted';
+            status.className = 'status';
+        }
     }
 }
 

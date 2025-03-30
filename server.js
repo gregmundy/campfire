@@ -159,10 +159,18 @@ class Channel {
             this.deckType = deckType;
             this.currentCardSet = deckType === 'custom' ? cards : CARD_DECKS[deckType];
             this.lastDeckChanger = username; // Store who changed the deck
+            // Clear all votes when changing card set
+            this.participants.forEach(participant => {
+                participant.vote = null;
+            });
         } else if (deckType === 'custom') {
             this.deckType = 'custom';
             this.currentCardSet = cards;
             this.lastDeckChanger = username; // Store who changed the deck
+            // Clear all votes when changing card set
+            this.participants.forEach(participant => {
+                participant.vote = null;
+            });
         }
         this.broadcastState();
     }

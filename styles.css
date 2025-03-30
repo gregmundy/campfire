@@ -841,12 +841,26 @@ button:disabled {
     transition: all 0.3s ease;
     margin-top: auto;
     margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    width: 100%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.player-card .vote-indicator.not-voted {
+    font-size: 1.4em;
+    opacity: 0.8;
 }
 
 .player-card .vote-indicator.has-voted {
     color: #48bb78;
     text-shadow: 0 0 10px rgba(72, 187, 120, 0.5);
-    transform: scale(1.1);
+    font-size: 1.6em;
 }
 
 .player-card .vote-indicator.revealed {
@@ -2496,6 +2510,15 @@ button:disabled {
     font-weight: 500;
     min-width: 60px;
     text-align: center;
+}
+
+.player-row .status.not-voted {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.4);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 11px;
 }
 
 .player-row .status.waiting {

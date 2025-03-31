@@ -258,6 +258,12 @@ class PlanningPoker {
             return;
         }
 
+        // Clean up any existing connection
+        if (this.ws) {
+            this.ws.close();
+            this.ws = null;
+        }
+
         // Hide connection status initially
         if (this.connectionStatus) {
             this.connectionStatus.classList.remove('connected', 'disconnected');
@@ -280,15 +286,14 @@ class PlanningPoker {
         this.ws = new WebSocket(wsUrl);
 
         this.ws.onopen = () => {
-            // Show connection status and update its state
-            if (this.connectionStatus) {
-                this.connectionStatus.classList.add('connected');
-                this.connectionStatus.innerHTML = '<span>Connected</span>';
-                // Force a reflow to ensure the transition works
-                this.connectionStatus.offsetHeight;
-                // Ensure it's visible
-                this.connectionStatus.style.opacity = '1';
-                this.connectionStatus.style.pointerEvents = 'auto';
+            // Only show connection status if we're actually in a room
+            if (this.roomCode) {
+                if (this.connectionStatus) {
+                    this.connectionStatus.classList.add('connected');
+                    this.connectionStatus.innerHTML = '<span>Connected</span>';
+                    this.connectionStatus.style.opacity = '1';
+                    this.connectionStatus.style.pointerEvents = 'auto';
+                }
             }
             
             // If we have pending join info, send it now
@@ -308,20 +313,24 @@ class PlanningPoker {
         };
 
         this.ws.onclose = () => {
-            // Show disconnected state
-            if (this.connectionStatus) {
-                this.connectionStatus.classList.remove('connected');
-                this.connectionStatus.classList.add('disconnected');
-                this.connectionStatus.innerHTML = '<span>Disconnected</span>';
-                // Force a reflow to ensure the transition works
-                this.connectionStatus.offsetHeight;
-                // Ensure it's visible
-                this.connectionStatus.style.opacity = '1';
-                this.connectionStatus.style.pointerEvents = 'auto';
+            // Only show disconnected state if we were previously in a room
+            if (this.roomCode) {
+                if (this.connectionStatus) {
+                    this.connectionStatus.classList.remove('connected');
+                    this.connectionStatus.classList.add('disconnected');
+                    this.connectionStatus.innerHTML = '<span>Disconnected</span>';
+                    this.connectionStatus.style.opacity = '1';
+                    this.connectionStatus.style.pointerEvents = 'auto';
+                }
             }
             
-            // Only try to reconnect if user wasn't kicked
-            if (!this.wasKicked) {
+            // Reset room state on disconnect
+            this.roomCode = null;
+            this.players = new Map();
+            this.revealed = false;
+            
+            // Only try to reconnect if user wasn't kicked and was in a room
+            if (!this.wasKicked && this.roomCode) {
                 setTimeout(() => this.connectWebSocket(), 2000);
             }
         };
@@ -503,6 +512,14 @@ class PlanningPoker {
                             this.revealButton.classList.remove('hidden');
                         }
                         
+                        // Show connection status now that we're in a room
+                        if (this.connectionStatus) {
+                            this.connectionStatus.classList.add('connected');
+                            this.connectionStatus.innerHTML = '<span>Connected</span>';
+                            this.connectionStatus.style.opacity = '1';
+                            this.connectionStatus.style.pointerEvents = 'auto';
+                        }
+                        
                         // Show self join notification on initial state
                         const currentPlayer = Object.entries(message.players)
                             .find(([_, player]) => player.isCurrentUser);
@@ -511,6 +528,11 @@ class PlanningPoker {
                         }
                         
                         this.isFirstState = false;
+                    }
+                    
+                    // Update room code if it exists in the message
+                    if (message.roomCode) {
+                        this.updateRoomCode(message.roomCode);
                     }
                     
                     // Store current user's vote before updating state
@@ -1656,22 +1678,25 @@ class PlanningPoker {
         if (roomCode) {
             this.roomCode = roomCode;
             this.roomCodeText.textContent = this.roomCode;
-            this.roomCodeDiv.classList.remove('hidden');
-            this.roomCodeDiv.classList.add('compact');
             
-            // Create or update user counter
-            let userCounter = this.roomCodeDiv.querySelector('.user-counter');
-            if (!userCounter) {
-                userCounter = document.createElement('div');
-                userCounter.className = 'user-counter';
-                // Append to roomCodeDiv directly instead of using insertBefore
-                this.roomCodeDiv.appendChild(userCounter);
-            }
-            userCounter.textContent = `${this.players.size} active`;
-            
-            // Update copy button text
-            if (this.copyLinkButton) {
-                this.copyLinkButton.textContent = 'Copy';
+            // Show the room code div when we have a room code
+            if (this.roomCodeDiv) {
+                this.roomCodeDiv.classList.remove('hidden');
+                this.roomCodeDiv.classList.add('compact');
+                
+                // Create or update user counter
+                let userCounter = this.roomCodeDiv.querySelector('.user-counter');
+                if (!userCounter) {
+                    userCounter = document.createElement('div');
+                    userCounter.className = 'user-counter';
+                    this.roomCodeDiv.appendChild(userCounter);
+                }
+                userCounter.textContent = `${this.players.size} active`;
+                
+                // Update copy button text
+                if (this.copyLinkButton) {
+                    this.copyLinkButton.textContent = 'Copy';
+                }
             }
             
             // Update URL with room code
@@ -1681,8 +1706,10 @@ class PlanningPoker {
         } else {
             this.roomCode = null;
             this.roomCodeText.textContent = '';
-            this.roomCodeDiv.classList.add('hidden');
-            this.roomCodeDiv.classList.remove('compact');
+            if (this.roomCodeDiv) {
+                this.roomCodeDiv.classList.add('hidden');
+                this.roomCodeDiv.classList.remove('compact');
+            }
             // Remove room code from URL
             const url = new URL(window.location.href);
             url.searchParams.delete('room');

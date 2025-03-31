@@ -2064,6 +2064,19 @@ class PlanningPoker {
             status.className = 'status';
         }
     }
+
+    handlePlayerLeft(message) {
+        const username = message.username;
+        if (this.players.has(username)) {
+            this.players.delete(username);
+            this.updatePlayersList();
+            
+            // If votes were in progress, we should update the UI to reflect the removed vote
+            if (!this.revealed) {
+                this.updateVoteCount();
+            }
+        }
+    }
 }
 
 // Initialize the game

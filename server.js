@@ -140,6 +140,11 @@ class Channel {
         const participant = this.participants.get(ws);
         if (participant) {
             const channel = participant.channel;
+            // Clear the participant's vote before removing them
+            if (participant.vote !== null) {
+                this.voteCount--;
+            }
+            participant.vote = null;
             this.participants.delete(ws);
             
             // Broadcast to remaining participants in the same channel

@@ -432,6 +432,13 @@ class PlanningPoker {
                         this.gameContainer.classList.add('hidden');
                     }
                     
+                    // Hide connection status
+                    if (this.connectionStatus) {
+                        this.connectionStatus.classList.remove('connected', 'disconnected');
+                        this.connectionStatus.style.opacity = '0';
+                        this.connectionStatus.style.pointerEvents = 'none';
+                    }
+                    
                     // Show persistent kick popup
                     this.showKickPopup();
                     
@@ -535,27 +542,20 @@ class PlanningPoker {
                         this.updateRoomCode(message.roomCode);
                     }
                     
-                    // Store current user's vote before updating state
-                    const currentUserVote = this.currentUserVote;
-                    console.log('Current vote before state update:', currentUserVote);
-                    
-                    // Update only changed or new players
+                    // Update all players with the latest state from the server
                     Object.entries(message.players).forEach(([username, player]) => {
-                        const existingPlayer = this.players.get(username);
-                        if (!existingPlayer || existingPlayer.vote !== player.vote || existingPlayer.isCurrentUser !== player.isCurrentUser) {
-                            console.log('Updating player state:', {
-                                username,
-                                oldVote: existingPlayer?.vote,
-                                newVote: player.vote,
-                                isCurrentUser: player.isCurrentUser
-                            });
-                            this.players.set(username, {
-                                vote: player.vote,
-                                isCurrentUser: player.isCurrentUser
-                            });
-                            // Update the player card with their vote state
-                            this.updatePlayerCard(username, player.vote);
-                        }
+                        console.log('Updating player state:', {
+                            username,
+                            oldVote: this.players.get(username)?.vote,
+                            newVote: player.vote,
+                            isCurrentUser: player.isCurrentUser
+                        });
+                        this.players.set(username, {
+                            vote: player.vote,
+                            isCurrentUser: player.isCurrentUser
+                        });
+                        // Update the player card with their vote state
+                        this.updatePlayerCard(username, player.vote);
                     });
                     
                     // Remove players that are no longer in the room
@@ -573,13 +573,6 @@ class PlanningPoker {
                             }
                         }
                     });
-                    
-                    // Update current user's vote if it exists
-                    if (currentUserVote) {
-                        this.currentUserVote = currentUserVote;
-                        // Update the UI to show the current user's vote
-                        this.updatePlayerCard(this.username, currentUserVote);
-                    }
                     
                     // Update players list and room code
                     this.updatePlayersList(message.players, message);
@@ -632,6 +625,16 @@ class PlanningPoker {
                     break;
                 case 'error':
                     if (message.message === 'Already joined') {
+                        // Hide connection status
+                        if (this.connectionStatus) {
+                            this.connectionStatus.classList.remove('connected', 'disconnected');
+                            this.connectionStatus.style.opacity = '0';
+                            this.connectionStatus.style.pointerEvents = 'none';
+                        }
+                        // Close the WebSocket connection if username is already taken
+                        if (this.ws) {
+                            this.ws.close();
+                        }
                         return;
                     }
                     this.showErrorNotification(message.message);
@@ -702,13 +705,21 @@ class PlanningPoker {
 
     handleReveal(message) {
         this.revealed = true;
+        
+        // Update all player votes from the message
         message.votes.forEach(([username, vote]) => {
             const player = this.players.get(username);
             if (player) {
                 player.vote = vote;
+                // Update the player's card immediately
+                this.updatePlayerCard(username, vote);
+                // Update the player's table row if it exists
+                this.updatePlayerTableRow(username, vote);
             }
         });
-        this.updatePlayersList();
+
+        // Update the UI to show all votes
+        this.updatePlayersList(Object.fromEntries(this.players), message);
         this.showResults(message.votes);
     }
 
@@ -995,9 +1006,9 @@ class PlanningPoker {
             .filter(([_, player]) => !player.isCurrentUser)
             .sort(([idA], [idB]) => idA.localeCompare(idB));
 
-        // Combine players: current user first, then others up to 9 more (max 10 total)
+        // Combine players: current user first, then others up to 3 more (max 4 total)
         const circlePlayers = currentUserEntry ? [currentUserEntry] : [];
-        circlePlayers.push(...otherPlayers.slice(0, 9));
+        circlePlayers.push(...otherPlayers.slice(0, 3));
 
         // Calculate positions for circle players
         const containerWidth = campfireContainer.offsetWidth;
@@ -1117,7 +1128,7 @@ class PlanningPoker {
         });
 
         // Handle additional players in table
-        const tablePlayers = otherPlayers.slice(9);
+        const tablePlayers = otherPlayers.slice(3);
         
         // Remove existing side panel if present
         const existingSidePanel = document.querySelector('.side-panel');
@@ -1301,9 +1312,58 @@ class PlanningPoker {
 
     revealVotes() {
         if (this.ws.readyState === WebSocket.OPEN) {
+            if (this.revealed) {
+                // If votes are already revealed, start a new round
+                this.resetRound();
+            } else {
+                // Otherwise, reveal the votes
+                this.ws.send(JSON.stringify({
+                    type: 'reveal'
+                }));
+            }
+        }
+    }
+
+    resetRound() {
+        if (this.ws.readyState === WebSocket.OPEN) {
+            // Send reset message to server
             this.ws.send(JSON.stringify({
-                type: 'reveal'
+                type: 'reset'
             }));
+
+            // Reset local state
+            this.revealed = false;
+            
+            // Clear all player votes
+            this.players.forEach(player => {
+                player.vote = null;
+            });
+
+            // Clear selected cards
+            if (this.cardsSection) {
+                this.cardsSection.querySelectorAll('.card').forEach(card => {
+                    card.classList.remove('selected');
+                    // Remove any existing checkmark
+                    const existingCheckmark = card.querySelector('.checkmark');
+                    if (existingCheckmark) {
+                        existingCheckmark.remove();
+                    }
+                });
+            }
+
+            // Hide results
+            const results = document.querySelector('#results');
+            if (results) {
+                results.classList.add('hidden');
+            }
+
+            // Reset reveal button text
+            if (this.revealButton) {
+                this.revealButton.textContent = 'Reveal Votes';
+            }
+
+            // Update the UI to show all players as not voted
+            this.updatePlayersList(Object.fromEntries(this.players), null);
         }
     }
 
